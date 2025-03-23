@@ -1,6 +1,6 @@
 # ChlannClaude - High-Resolution Media Sharing Messenger
 
-A WhatsApp/Viber clone focusing on high-resolution media sharing, along with text and links, designed for a small group of users (~20) with self-hosting capabilities.
+A media-messaging app focusing on high-resolution media sharing, along with text and links, designed for a small group of users (~20) with self-hosting capabilities.
 
 ## Features
 
