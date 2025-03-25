@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # MongoDB - Database for storing application data
+  mongodb:
+    image: mongo:latest
+    container_name: chlann-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+    networks:
+      - chlann-network
+
+  # Redis - For caching and pub/sub messaging
+  redis:
+    image: redis:alpine
+    container_name: chlann-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chlann-network
+
+  # MinIO - S3-compatible storage for media files
+  minio:
+    image: minio/minio
+    container_name: chlann-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    networks:
+      - chlann-network
+
+  # Media Service - Handles media uploads, processing, and retrieval
+  media-service:
+    build:
+      context: ../backend/media-service
+      dockerfile: Dockerfile
+    container_name: chlann-media-service
+    restart: always
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - MONGO_URI=mongodb://root:password@mongodb:27017/media?authSource=admin
+      - REDIS_URI=redis://redis:6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=media
+      - LOG_LEVEL=debug
+    depends_on:
+      - mongodb
+      - redis
+      - minio
+    networks:
+      - chlann-network
+
+  # Search Service - Handles search functionality
+  search-service:
+    build:
+      context: ../backend/search-service
+      dockerfile: Dockerfile
+    container_name: chlann-search-service
+    restart: always
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - MONGO_URI=mongodb://root:password@mongodb:27017/search?authSource=admin
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - LOG_LEVEL=debug
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - chlann-network
+
+networks:
+  chlann-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  redis_data:
+  minio_data:

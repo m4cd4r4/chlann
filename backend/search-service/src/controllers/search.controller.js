@@ -1,277 +1,313 @@
-const { validationResult } = require('express-validator');
-const searchService = require('../services/search.service');
 const logger = require('../utils/logger');
 
-/**
- * Search content across messages, conversations, users, and media
- */
-exports.search = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const userId = req.user.id;
-  const {
-    query,
-    contentTypes,
-    conversationId,
-    peopleTagged,
-    startDate,
-    endDate,
-    page,
-    limit
-  } = req.query;
-
-  try {
-    // Parse contentTypes array if provided as a string
-    let parsedContentTypes = contentTypes;
-    if (contentTypes && typeof contentTypes === 'string') {
-      parsedContentTypes = contentTypes.split(',');
+// Basic controllers for development - will be expanded later
+const searchController = {
+  // Main search endpoint
+  search: async (req, res) => {
+    try {
+      // Extract query parameters
+      const { 
+        query = '', 
+        contentTypes, 
+        conversationId, 
+        peopleTagged, 
+        startDate, 
+        endDate,
+        page = 1,
+        limit = 10
+      } = req.query;
+      
+      logger.info(`Search request received: ${query}`);
+      
+      // This is a mock implementation for development
+      return res.status(200).json({
+        results: [
+          {
+            id: 'mock-result-1',
+            contentType: 'message',
+            content: 'This is a mock search result matching your query',
+            relevanceScore: 0.95,
+            createdAt: new Date().toISOString(),
+            user: {
+              id: 'mock-user-id',
+              username: 'user1'
+            }
+          },
+          {
+            id: 'mock-result-2',
+            contentType: 'media',
+            mediaType: 'image',
+            caption: 'Sample image related to the search',
+            thumbnailUrl: 'http://localhost:9000/media/thumbnails/sample.jpg',
+            relevanceScore: 0.85,
+            createdAt: new Date().toISOString(),
+            user: {
+              id: 'mock-user-id',
+              username: 'user1'
+            }
+          }
+        ],
+        pagination: {
+          total: 2,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: 1
+        },
+        query: {
+          text: query,
+          contentTypes: contentTypes ? contentTypes.split(',') : ['all'],
+          filters: {
+            conversationId,
+            peopleTagged: peopleTagged ? peopleTagged.split(',') : [],
+            dateRange: {
+              start: startDate,
+              end: endDate
+            }
+          }
+        }
+      });
+    } catch (error) {
+      logger.error(`Error in search: ${error.message}`);
+      return res.status(500).json({ error: 'Search operation failed' });
     }
+  },
 
-    // Parse peopleTagged array if provided as a string
-    let parsedPeopleTagged = peopleTagged;
-    if (peopleTagged && typeof peopleTagged === 'string') {
-      parsedPeopleTagged = peopleTagged.split(',');
+  // Index content for searching
+  indexContent: async (req, res) => {
+    try {
+      const { contentId, contentType, content, metadata } = req.body;
+      
+      logger.info(`Indexing content: ${contentType}/${contentId}`);
+      
+      // Mock response for development
+      return res.status(200).json({
+        message: 'Content indexed successfully',
+        contentId,
+        contentType
+      });
+    } catch (error) {
+      logger.error(`Error indexing content: ${error.message}`);
+      return res.status(500).json({ error: 'Failed to index content' });
     }
+  },
 
-    const searchResults = await searchService.searchContent({
-      query,
-      userId,
-      contentTypes: parsedContentTypes,
-      conversationId,
-      peopleTagged: parsedPeopleTagged,
-      startDate,
-      endDate,
-      page,
-      limit
-    });
-
-    res.status(200).json(searchResults);
-  } catch (error) {
-    logger.error(`Search error: ${error.message}`);
-    res.status(500).json({ error: 'Server error', message: error.message });
-  }
-};
-
-/**
- * Index content for searching
- */
-exports.indexContent = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const userId = req.user.id;
-  const {
-    contentId,
-    contentType,
-    content,
-    metadata,
-    conversationId,
-    peopleTagged
-  } = req.body;
-
-  try {
-    const indexedContent = await searchService.indexContent({
-      contentId,
-      contentType,
-      userId,
-      content,
-      metadata,
-      conversationId,
-      peopleTagged
-    });
-
-    res.status(201).json({
-      message: 'Content indexed successfully',
-      indexedContent
-    });
-  } catch (error) {
-    logger.error(`Index content error: ${error.message}`);
-    res.status(500).json({ error: 'Server error', message: error.message });
-  }
-};
-
-/**
- * Delete content from search index
- */
-exports.deleteContent = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const userId = req.user.id;
-  const { contentId, contentType } = req.params;
-
-  try {
-    const result = await searchService.deleteContent({
-      contentId,
-      contentType,
-      userId
-    });
-
-    res.status(200).json({
-      message: result.deleted ? 'Content deleted from index' : 'Content not found in index',
-      result
-    });
-  } catch (error) {
-    logger.error(`Delete content error: ${error.message}`);
-    res.status(500).json({ error: 'Server error', message: error.message });
-  }
-};
-
-/**
- * Delete all content related to a conversation
- */
-exports.deleteConversationContent = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { conversationId } = req.params;
-
-  try {
-    const result = await searchService.deleteConversationContent(conversationId);
-
-    res.status(200).json({
-      message: result.deleted ? 'Conversation content deleted from index' : 'No conversation content found',
-      result
-    });
-  } catch (error) {
-    logger.error(`Delete conversation content error: ${error.message}`);
-    res.status(500).json({ error: 'Server error', message: error.message });
-  }
-};
-
-/**
- * Find similar content
- */
-exports.findSimilarContent = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const userId = req.user.id;
-  const { contentId, contentType } = req.params;
-
-  try {
-    const similarContent = await searchService.findSimilarContent(contentId, contentType, userId);
-
-    res.status(200).json({
-      similarContent
-    });
-  } catch (error) {
-    logger.error(`Find similar content error: ${error.message}`);
-    res.status(500).json({ error: 'Server error', message: error.message });
-  }
-};
-
-/**
- * Search by person
- */
-exports.searchByPerson = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const userId = req.user.id;
-  const { personId } = req.params;
-  const { page, limit, contentTypes } = req.query;
-
-  try {
-    // Parse contentTypes array if provided as a string
-    let parsedContentTypes = contentTypes;
-    if (contentTypes && typeof contentTypes === 'string') {
-      parsedContentTypes = contentTypes.split(',');
+  // Delete content from search index
+  deleteContent: async (req, res) => {
+    try {
+      const { contentType, contentId } = req.params;
+      
+      logger.info(`Deleting content from index: ${contentType}/${contentId}`);
+      
+      // Mock response for development
+      return res.status(200).json({
+        message: 'Content deleted from index',
+        contentId,
+        contentType
+      });
+    } catch (error) {
+      logger.error(`Error deleting content: ${error.message}`);
+      return res.status(500).json({ error: 'Failed to delete content' });
     }
+  },
 
-    const searchResults = await searchService.searchContent({
-      userId,
-      contentTypes: parsedContentTypes,
-      peopleTagged: [personId],
-      page,
-      limit
-    });
-
-    res.status(200).json(searchResults);
-  } catch (error) {
-    logger.error(`Search by person error: ${error.message}`);
-    res.status(500).json({ error: 'Server error', message: error.message });
-  }
-};
-
-/**
- * Search by date range
- */
-exports.searchByDateRange = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const userId = req.user.id;
-  const { startDate, endDate, page, limit, contentTypes } = req.query;
-
-  if (!startDate && !endDate) {
-    return res.status(400).json({ error: 'At least one date parameter is required' });
-  }
-
-  try {
-    // Parse contentTypes array if provided as a string
-    let parsedContentTypes = contentTypes;
-    if (contentTypes && typeof contentTypes === 'string') {
-      parsedContentTypes = contentTypes.split(',');
+  // Delete all content related to a conversation
+  deleteConversationContent: async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      
+      logger.info(`Deleting all content for conversation: ${conversationId}`);
+      
+      // Mock response for development
+      return res.status(200).json({
+        message: 'Conversation content deleted from index',
+        conversationId
+      });
+    } catch (error) {
+      logger.error(`Error deleting conversation content: ${error.message}`);
+      return res.status(500).json({ error: 'Failed to delete conversation content' });
     }
+  },
 
-    const searchResults = await searchService.searchContent({
-      userId,
-      contentTypes: parsedContentTypes,
-      startDate,
-      endDate,
-      page,
-      limit
-    });
+  // Find similar content
+  findSimilarContent: async (req, res) => {
+    try {
+      const { contentType, contentId } = req.params;
+      
+      logger.info(`Finding similar content to: ${contentType}/${contentId}`);
+      
+      // Mock response for development
+      return res.status(200).json({
+        results: [
+          {
+            id: 'mock-similar-1',
+            contentType: 'message',
+            content: 'This is a similar message',
+            similarityScore: 0.85,
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'mock-similar-2',
+            contentType: 'media',
+            mediaType: 'image',
+            caption: 'Similar image',
+            thumbnailUrl: 'http://localhost:9000/media/thumbnails/similar.jpg',
+            similarityScore: 0.78,
+            createdAt: new Date().toISOString()
+          }
+        ],
+        sourceContent: {
+          id: contentId,
+          type: contentType
+        }
+      });
+    } catch (error) {
+      logger.error(`Error finding similar content: ${error.message}`);
+      return res.status(500).json({ error: 'Failed to find similar content' });
+    }
+  },
 
-    res.status(200).json(searchResults);
-  } catch (error) {
-    logger.error(`Search by date range error: ${error.message}`);
-    res.status(500).json({ error: 'Server error', message: error.message });
+  // Search by person
+  searchByPerson: async (req, res) => {
+    try {
+      const { personId } = req.params;
+      const { page = 1, limit = 10, contentTypes } = req.query;
+      
+      logger.info(`Searching content by person: ${personId}`);
+      
+      // Mock response for development
+      return res.status(200).json({
+        results: [
+          {
+            id: 'mock-person-result-1',
+            contentType: 'message',
+            content: 'Message mentioning this person',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'mock-person-result-2',
+            contentType: 'media',
+            mediaType: 'image',
+            caption: 'Image with this person tagged',
+            thumbnailUrl: 'http://localhost:9000/media/thumbnails/person.jpg',
+            createdAt: new Date().toISOString()
+          }
+        ],
+        pagination: {
+          total: 2,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: 1
+        },
+        person: {
+          id: personId,
+          contentTypes: contentTypes ? contentTypes.split(',') : ['all']
+        }
+      });
+    } catch (error) {
+      logger.error(`Error searching by person: ${error.message}`);
+      return res.status(500).json({ error: 'Failed to search by person' });
+    }
+  },
+
+  // Search by date range
+  searchByDateRange: async (req, res) => {
+    try {
+      const { 
+        startDate, 
+        endDate, 
+        page = 1, 
+        limit = 10, 
+        contentTypes 
+      } = req.query;
+      
+      logger.info(`Searching content by date range: ${startDate} to ${endDate}`);
+      
+      // Mock response for development
+      return res.status(200).json({
+        results: [
+          {
+            id: 'mock-date-result-1',
+            contentType: 'message',
+            content: 'Message from this date range',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'mock-date-result-2',
+            contentType: 'media',
+            mediaType: 'image',
+            caption: 'Image from this date range',
+            thumbnailUrl: 'http://localhost:9000/media/thumbnails/date.jpg',
+            createdAt: new Date().toISOString()
+          }
+        ],
+        pagination: {
+          total: 2,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: 1
+        },
+        dateRange: {
+          startDate: startDate || '2023-01-01',
+          endDate: endDate || new Date().toISOString().split('T')[0],
+          contentTypes: contentTypes ? contentTypes.split(',') : ['all']
+        }
+      });
+    } catch (error) {
+      logger.error(`Error searching by date range: ${error.message}`);
+      return res.status(500).json({ error: 'Failed to search by date range' });
+    }
+  },
+
+  // Search in conversation
+  searchInConversation: async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const { query = '', page = 1, limit = 10 } = req.query;
+      
+      logger.info(`Searching in conversation ${conversationId}: ${query}`);
+      
+      // Mock response for development
+      return res.status(200).json({
+        results: [
+          {
+            id: 'mock-conv-result-1',
+            contentType: 'message',
+            content: 'Message matching search in this conversation',
+            createdAt: new Date().toISOString(),
+            user: {
+              id: 'mock-user-id',
+              username: 'user1'
+            }
+          },
+          {
+            id: 'mock-conv-result-2',
+            contentType: 'media',
+            mediaType: 'image',
+            caption: 'Image matching search in this conversation',
+            thumbnailUrl: 'http://localhost:9000/media/thumbnails/conv.jpg',
+            createdAt: new Date().toISOString(),
+            user: {
+              id: 'mock-user-id',
+              username: 'user1'
+            }
+          }
+        ],
+        pagination: {
+          total: 2,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: 1
+        },
+        conversation: {
+          id: conversationId,
+          query
+        }
+      });
+    } catch (error) {
+      logger.error(`Error searching in conversation: ${error.message}`);
+      return res.status(500).json({ error: 'Failed to search in conversation' });
+    }
   }
 };
 
-/**
- * Search in conversation
- */
-exports.searchInConversation = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const userId = req.user.id;
-  const { conversationId } = req.params;
-  const { query, page, limit } = req.query;
-
-  try {
-    const searchResults = await searchService.searchContent({
-      query,
-      userId,
-      contentTypes: ['message', 'media'],
-      conversationId,
-      page,
-      limit
-    });
-
-    res.status(200).json(searchResults);
-  } catch (error) {
-    logger.error(`Search in conversation error: ${error.message}`);
-    res.status(500).json({ error: 'Server error', message: error.message });
-  }
-};
+module.exports = searchController;
