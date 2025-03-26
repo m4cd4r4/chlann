@@ -20,12 +20,13 @@ import SettingsScreen from '../screens/main/SettingsScreen';
 
 // Chat screens
 import ChatScreen from '../screens/chat/ChatScreen';
-import MediaViewerScreen from '../screens/chat/MediaViewerScreen';
 import GroupInfoScreen from '../screens/chat/GroupInfoScreen';
 import UserProfileScreen from '../screens/chat/UserProfileScreen';
 
 // Media screens
 import MediaGalleryScreen from '../screens/media/MediaGalleryScreen';
+import MediaViewerScreen from '../screens/media/viewers/MediaViewerScreen';
+import MediaSearchScreen from '../screens/media/search/MediaSearchScreen';
 
 // Redux
 import { loadUser, refreshToken } from '../redux/slices/authSlice';
@@ -181,6 +182,14 @@ const AppNavigation = () => {
               options={{ 
                 headerShown: false,
                 animation: 'slide_from_right'
+              }}
+            />
+            <Stack.Screen 
+              name="MediaSearch" 
+              component={MediaSearchScreen} 
+              options={{ 
+                headerShown: false,
+                animation: 'slide_from_bottom'
               }}
             />
           </Stack.Group>

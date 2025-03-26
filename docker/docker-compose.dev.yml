@@ -44,33 +44,6 @@ services:
     networks:
       - chlann-network
 
-  # Media Service - Handles media uploads, processing, and retrieval
-  media-service:
-    build:
-      context: ../backend/media-service
-      dockerfile: Dockerfile
-    container_name: chlann-media-service
-    restart: always
-    ports:
-      - "3003:3003"
-    environment:
-      - NODE_ENV=development
-      - PORT=3003
-      - MONGO_URI=mongodb://root:password@mongodb:27017/media?authSource=admin
-      - REDIS_URI=redis://redis:6379
-      - MINIO_ENDPOINT=minio
-      - MINIO_PORT=9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET=media
-      - LOG_LEVEL=debug
-    depends_on:
-      - mongodb
-      - redis
-      - minio
-    networks:
-      - chlann-network
-
   # Search Service - Handles search functionality
   search-service:
     build:
