@@ -1,0 +1,6 @@
+{"level":"info","message":"Media Service running on port 3003","service":"media-service","timestamp":"2025-03-27T13:02:17.861Z"}
+{"level":"info","message":"Connected to MongoDB","service":"media-service","timestamp":"2025-03-27T13:02:17.931Z"}
+{"level":"info","message":"::1 - - [27/Mar/2025:13:44:56 +0000] \"GET /health HTTP/1.1\" 200 335 \"-\" \"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-AU) WindowsPowerShell/5.1.22621.4391\"","service":"media-service","timestamp":"2025-03-27T13:44:56.593Z"}
+{"level":"info","message":"::1 - - [27/Mar/2025:15:17:33 +0000] \"GET / HTTP/1.1\" 200 534 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36\"","service":"media-service","timestamp":"2025-03-27T15:17:33.311Z"}
+{"level":"info","message":"::1 - - [27/Mar/2025:15:17:33 +0000] \"GET /favicon.ico HTTP/1.1\" 200 340 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36\"","service":"media-service","timestamp":"2025-03-27T15:17:33.376Z"}
+{"level":"info","message":"Media Service running on port 3003","service":"media-service","timestamp":"2025-03-28T12:38:51.279Z"}

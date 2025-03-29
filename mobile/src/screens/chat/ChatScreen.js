@@ -23,6 +23,7 @@ import SocketService from '../../services/socketService';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { v4 as uuidv4 } from 'uuid';
+import MediaService from '../../services/mediaService';
 
 const ChatScreen = ({ route, navigation }) => {
   const { conversationId, isGroup } = route.params;
@@ -324,14 +325,18 @@ const ChatScreen = ({ route, navigation }) => {
     return (
       <View style={[styles.messageContainer, isOwnMessage ? styles.ownMessageContainer : styles.otherMessageContainer]}>
         {!isOwnMessage && !isGroup && (
-          <Image
-            source={
-              item.sender?.profilePicture
-                ? { uri: item.sender.profilePicture }
-                : require('../../assets/default-avatar.png')
-            }
-            style={styles.messageSenderAvatar}
-          />
+          item.sender?.profilePicture ? (
+            <Image
+              source={{ uri: item.sender.profilePicture }}
+              style={styles.messageSenderAvatar}
+            />
+          ) : (
+            <View style={styles.messageSenderAvatarPlaceholder}>
+              <Text style={styles.messageSenderAvatarText}>
+                {item.sender?.username?.charAt(0).toUpperCase() || '?'}
+              </Text>
+            </View>
+          )
         )}
         
         <View style={[styles.messageBubble, isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble]}>
@@ -586,6 +591,21 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginRight: 8,
     alignSelf: 'flex-end',
+  },
+  messageSenderAvatarPlaceholder: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    alignSelf: 'flex-end',
+  },
+  messageSenderAvatarText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.WHITE,
   },
   messageBubble: {
     maxWidth: '80%',

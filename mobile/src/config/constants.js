@@ -1,5 +1,46 @@
 // App-wide constants and configuration
 
+// API and WebSocket URLs
+export const API_URL = 'http://localhost:8000'; // From API_GATEWAY_URL in .env
+export const WEBSOCKET_URL = 'ws://localhost:8080'; // From WEBSOCKET_URL in .env
+
+// API Routes
+export const ROUTES = {
+  // Auth routes
+  AUTH: '/api/auth',
+  LOGIN: '/api/auth/login',
+  REGISTER: '/api/auth/register',
+  LOGOUT: '/api/auth/logout',
+  REFRESH_TOKEN: '/api/auth/refresh-token',
+  PROFILE: '/api/auth/profile',
+  
+  // Conversation routes
+  CONVERSATIONS: '/api/conversations',
+  
+  // Message routes
+  MESSAGES: '/api/messages',
+  
+  // Media routes
+  MEDIA: '/api/media',
+  MEDIA_UPLOAD: '/api/media/upload',
+  PRESIGNED_URL: '/api/media/presigned-url',
+  
+  // Search routes
+  SEARCH: '/api/search'
+};
+
+// Socket events
+export const SOCKET_EVENTS = {
+  CONVERSATION_JOIN: 'conversation:join',
+  CONVERSATION_LEAVE: 'conversation:leave',
+  TYPING_START: 'typing:start',
+  TYPING_STOP: 'typing:stop',
+  PRESENCE_ONLINE: 'presence:online',
+  PRESENCE_OFFLINE: 'presence:offline',
+  MESSAGE_RECEIVED: 'message:received',
+  MESSAGE_READ: 'message:read'
+};
+
 // Color scheme
 export const COLORS = {
   // Primary colors

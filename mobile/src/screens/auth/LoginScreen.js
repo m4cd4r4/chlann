@@ -5,13 +5,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
   SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, clearError } from '../../redux/slices/authSlice';
 import { COLORS } from '../../config/constants';
@@ -78,11 +78,9 @@ const LoginScreen = ({ navigation }) => {
         style={styles.keyboardView}
       >
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <View style={styles.logoCircle}>
+            <Ionicons name="chatbubbles" size={60} color={COLORS.WHITE} />
+          </View>
           <Text style={styles.appName}>ChlannClaude</Text>
           <Text style={styles.tagline}>High-Resolution Media Messaging</Text>
         </View>
@@ -163,9 +161,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logo: {
+  logoCircle: {
     width: 100,
     height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
   appName: {
