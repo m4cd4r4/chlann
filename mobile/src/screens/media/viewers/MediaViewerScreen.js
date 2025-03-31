@@ -17,83 +17,65 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { COLORS } from '../../../config/constants';
 
 // Import components
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'; // Import Video component and types
+import Slider from '@react-native-community/slider'; // Import Slider
 import ProgressiveImage from './components/ProgressiveImage';
 import ImageZoomViewer from './components/ImageZoomViewer';
 import ResolutionSelector from './components/ResolutionSelector';
 import MediaInfo from './components/MediaInfo';
+import MediaService from '../../../services/mediaService'; // Import MediaService
 
-// Quality levels
+// Quality levels (map to backend version keys)
 const QUALITY = {
-  THUMBNAIL: 0,
-  PREVIEW: 1,
-  HIGH: 2,
-  ORIGINAL: 3,
+  THUMBNAIL: 'thumbnail',
+  SMALL: 'small',
+  MEDIUM: 'medium',
+  LARGE: 'large',
+  ORIGINAL: 'original',
+  PROCESSED_VIDEO: 'processed_video', // For video
 };
 
-// Quality level labels
+// Quality level labels (adjust as needed)
 const QUALITY_LABELS = {
-  [QUALITY.THUMBNAIL]: 'SD',
-  [QUALITY.PREVIEW]: 'HD',
-  [QUALITY.HIGH]: '4K',
-  [QUALITY.ORIGINAL]: 'RAW',
-};
-
-// Temporary mocked media data
-const getMockMediaData = (mediaId) => {
-  return {
-    id: mediaId,
-    type: 'image', // or 'video'
-    width: 4032,
-    height: 3024,
-    createdAt: new Date().toISOString(),
-    thumbnailUrl: 'https://via.placeholder.com/300',
-    previewUrl: 'https://via.placeholder.com/1080',
-    highResUrl: 'https://via.placeholder.com/3000',
-    originalUrl: 'https://via.placeholder.com/4032',
-    size: {
-      thumbnail: '30KB',
-      preview: '200KB',
-      high: '2.5MB',
-      original: '8.2MB',
-    },
-    metadata: {
-      camera: 'iPhone 13 Pro',
-      iso: '100',
-      aperture: 'f/1.8',
-      exposureTime: '1/120s',
-      location: 'Perth, Australia',
-    },
-  };
+  [QUALITY.THUMBNAIL]: 'Thumb',
+  [QUALITY.SMALL]: 'SD',
+  [QUALITY.MEDIUM]: 'HD',
+  [QUALITY.LARGE]: 'FHD',
+  [QUALITY.ORIGINAL]: 'Original',
+  [QUALITY.PROCESSED_VIDEO]: 'Video',
 };
 
 const MediaViewerScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { mediaId } = route.params || {};
-  
+
   // State
   const [media, setMedia] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentQuality, setCurrentQuality] = useState(QUALITY.PREVIEW);
+  // Default quality based on type (e.g., medium for image, processed for video)
+  const [currentQuality, setCurrentQuality] = useState(null);
   const [showControls, setShowControls] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  
-  // Timer references for controls auto-hide
+  // Video playback state
+  const [playbackStatus, setPlaybackStatus] = useState < AVPlaybackStatus | null > (null);
+
+  // Refs
   const autoHideTimer = useRef(null);
-  
+  const videoRef = useRef < Video | null > (null); // Ref for video component
+
   // Load media on mount
   useEffect(() => {
     const loadMedia = async () => {
       setLoading(true);
       
       try {
-        // In a real app, this would be an API call
-        // const mediaData = await api.getMedia(mediaId);
-        const mediaData = getMockMediaData(mediaId);
-        
+        const mediaData = await MediaService.getMediaById(mediaId);
         setMedia(mediaData);
+        // Set initial quality based on type
+        setCurrentQuality(mediaData.mediaType === 'video' ? QUALITY.PROCESSED_VIDEO : QUALITY.MEDIUM);
       } catch (error) {
         console.error('Error loading media:', error);
         Alert.alert('Error', 'Failed to load media.');
@@ -176,43 +158,37 @@ const MediaViewerScreen = () => {
   
   // Get current media URL based on quality
   const getCurrentMediaUrl = () => {
-    if (!media) return null;
-    
-    switch (currentQuality) {
-      case QUALITY.THUMBNAIL:
-        return media.thumbnailUrl;
-      case QUALITY.PREVIEW:
-        return media.previewUrl;
-      case QUALITY.HIGH:
-        return media.highResUrl;
-      case QUALITY.ORIGINAL:
-        return media.originalUrl;
-      default:
-        return media.previewUrl;
+    if (!media || !currentQuality || !media.versions || !media.versions[currentQuality]) {
+      // Fallback or return null/placeholder
+      return media?.versions?.medium?.url || media?.versions?.thumbnail?.url || null;
     }
+    return media.versions[currentQuality].url;
   };
-  
+
+  // Format time helper
+  const formatTime = (millis) => {
+    if (!millis) return '0:00';
+    const totalSeconds = Math.floor(millis / 1000);
+    const seconds = totalSeconds % 60;
+    const minutes = Math.floor(totalSeconds / 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
   // Get current quality label
   const getCurrentQualityLabel = () => {
-    return QUALITY_LABELS[currentQuality] || 'HD';
+    return QUALITY_LABELS[currentQuality] || 'Unknown';
   };
-  
-  // Get current quality size
+
+  // Get current quality size (if available in version data)
   const getCurrentQualitySize = () => {
-    if (!media) return '';
-    
-    switch (currentQuality) {
-      case QUALITY.THUMBNAIL:
-        return media.size.thumbnail;
-      case QUALITY.PREVIEW:
-        return media.size.preview;
-      case QUALITY.HIGH:
-        return media.size.high;
-      case QUALITY.ORIGINAL:
-        return media.size.original;
-      default:
-        return media.size.preview;
+    if (!media || !currentQuality || !media.versions || !media.versions[currentQuality]?.size) {
+      return '';
     }
+    // Format size (e.g., from bytes to KB/MB)
+    const sizeInBytes = media.versions[currentQuality].size;
+    if (sizeInBytes < 1024) return `${sizeInBytes} B`;
+    if (sizeInBytes < 1024 * 1024) return `${(sizeInBytes / 1024).toFixed(1)} KB`;
+    return `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`;
   };
   
   // Render header
@@ -265,28 +241,52 @@ const MediaViewerScreen = () => {
     
     return (
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.qualitySelector}
-          onPress={() => {
-            // For demonstration, cycle through quality levels
-            setCurrentQuality((prev) => (prev + 1) % 4);
-          }}
-        >
-          <Text style={styles.qualityText}>{getCurrentQualityLabel()}</Text>
-          <Text style={styles.qualitySizeText}>{getCurrentQualitySize()}</Text>
-        </TouchableOpacity>
-        
-        {media && media.type === 'video' && (
+        {/* Only show quality selector for images */}
+        {media?.mediaType === 'image' && (
+          <TouchableOpacity
+            style={styles.qualitySelector}
+            onPress={() => setShowQualityModal(true)} // Open the modal
+          >
+            <Text style={styles.qualityText}>{getCurrentQualityLabel()}</Text>
+            <Text style={styles.qualitySizeText}>{getCurrentQualitySize()}</Text>
+          </TouchableOpacity>
+        )}
+
+        {media?.mediaType === 'video' && (
           <View style={styles.videoControls}>
-            <TouchableOpacity style={styles.videoControlButton}>
-              <Ionicons name="play" size={24} color="white" />
+            <TouchableOpacity
+              style={styles.videoControlButton}
+              onPress={() => {
+                if (playbackStatus?.isLoaded) {
+                  playbackStatus.isPlaying ? videoRef.current?.pauseAsync() : videoRef.current?.playAsync();
+                }
+              }}
+            >
+              <Ionicons name={playbackStatus?.isPlaying ? "pause" : "play"} size={24} color="white" />
             </TouchableOpacity>
-            
-            <View style={styles.videoProgress}>
-              <View style={styles.videoProgressBar} />
-            </View>
-            
-            <Text style={styles.videoDuration}>0:00 / 1:30</Text>
+
+            <Text style={styles.videoTime}>{formatTime(playbackStatus?.positionMillis)}</Text>
+
+            <Slider
+              style={styles.videoProgressSlider}
+              minimumValue={0}
+              maximumValue={playbackStatus?.durationMillis || 1}
+              value={playbackStatus?.positionMillis || 0}
+              minimumTrackTintColor={COLORS.PRIMARY}
+              maximumTrackTintColor="rgba(255, 255, 255, 0.5)"
+              thumbTintColor={COLORS.PRIMARY}
+              onSlidingComplete={async (value) => {
+                 if (videoRef.current) {
+                   await videoRef.current.setPositionAsync(value);
+                   if (!playbackStatus?.isPlaying) { // Resume playing if paused before sliding
+                     // await videoRef.current.playAsync(); // Optional: auto-play after seek
+                   }
+                 }
+              }}
+              // onSlidingStart={() => videoRef.current?.pauseAsync()} // Optional: pause while sliding
+            />
+
+            <Text style={styles.videoTime}>{formatTime(playbackStatus?.durationMillis)}</Text>
           </View>
         )}
       </View>
@@ -296,22 +296,24 @@ const MediaViewerScreen = () => {
   // Quality selection modal
   const [showQualityModal, setShowQualityModal] = useState(false);
   
-  // Handle zoom
+  // Handle zoom (adjust quality logic if needed)
   const handleZoomStart = (scale) => {
-    // Hide controls when zooming
     setShowControls(false);
   };
-  
+
   const handleZoomChange = (scale) => {
-    // Automatically load higher quality when zoomed in
-    if (scale > 2 && currentQuality < QUALITY.HIGH) {
-      setCurrentQuality(QUALITY.HIGH);
+    // Example: Load higher quality if zoomed significantly
+    if (media?.mediaType === 'image' && scale > 2 && currentQuality !== QUALITY.LARGE && currentQuality !== QUALITY.ORIGINAL) {
+       if (media.versions[QUALITY.LARGE]) {
+         setCurrentQuality(QUALITY.LARGE);
+       } else if (media.versions[QUALITY.ORIGINAL]) {
+         setCurrentQuality(QUALITY.ORIGINAL);
+       }
     }
   };
-  
+
   const handleZoomEnd = (scale) => {
-    // Show controls briefly when zoom ends
-    setShowControls(true);
+    setShowControls(true); // Show controls briefly after zoom
   };
   
   // Main render
@@ -329,22 +331,21 @@ const MediaViewerScreen = () => {
           style={styles.mediaContainer}
           onPress={handleMediaTap}
         >
-          {media?.type === 'video' ? (
-            // Video player would go here when implemented
-            <View style={[styles.mediaPlaceholder, styles.media]}>
-              <Text style={styles.placeholderText}>Video Player</Text>
-              <Text style={styles.placeholderSubtext}>
-                Displaying at {getCurrentQualityLabel()} quality
-              </Text>
-              <Text style={styles.placeholderSubtext}>
-                Resolution: {media?.width} × {media?.height}
-              </Text>
-            </View>
+          {media?.mediaType === 'video' ? ( // Check mediaType
+            <Video
+              ref={videoRef}
+              style={styles.media}
+              source={{ uri: getCurrentMediaUrl() }} // Use processed video URL
+              // useNativeControls // Remove native controls
+              resizeMode={ResizeMode.CONTAIN} // Use ResizeMode enum
+              onPlaybackStatusUpdate={setPlaybackStatus} // Update state on status change
+            />
           ) : (
             // Image viewer with zoom capabilities
             <ImageZoomViewer
-              thumbnailSource={{ uri: media?.thumbnailUrl }}
-              source={{ uri: getCurrentMediaUrl() }}
+              // Use thumbnail from versions if available
+              thumbnailSource={{ uri: media?.versions?.thumbnail?.url }}
+              source={{ uri: getCurrentMediaUrl() }} // Use dynamic URL based on quality
               style={styles.media}
               onZoomStart={handleZoomStart}
               onZoomChange={handleZoomChange}
@@ -355,15 +356,8 @@ const MediaViewerScreen = () => {
             />
           )}
           
-          {/* Display quality loading indicator */}
-          {currentQuality > QUALITY.PREVIEW && !imageLoaded && (
-            <View style={styles.loadingOverlay}>
-              <Text style={styles.loadingText}>
-                Loading {getCurrentQualityLabel()} quality...
-              </Text>
-              <ActivityIndicator size="small" color="white" />
-            </View>
-          )}
+          {/* TODO: Add loading indicator logic based on image loading state */}
+          {/* {isLoadingHigherQuality && ( ... )} */}
         </TouchableOpacity>
       )}
       
@@ -378,25 +372,20 @@ const MediaViewerScreen = () => {
         />
       )}
       
-      {/* Quality selector modal */}
-      <ResolutionSelector
-        currentQuality={currentQuality === QUALITY.THUMBNAIL ? 'thumbnail' : 
-                       currentQuality === QUALITY.PREVIEW ? 'preview' : 
-                       currentQuality === QUALITY.HIGH ? 'high' : 'original'}
-        onQualityChange={(quality) => {
-          // Map quality string to enum
-          const qualityMap = {
-            'thumbnail': QUALITY.THUMBNAIL,
-            'preview': QUALITY.PREVIEW,
-            'high': QUALITY.HIGH,
-            'original': QUALITY.ORIGINAL,
-          };
-          setCurrentQuality(qualityMap[quality] || QUALITY.PREVIEW);
-        }}
-        showModal={showQualityModal}
-        onToggleModal={() => setShowQualityModal(!showQualityModal)}
-        estimatedDataUsage={getCurrentQualitySize()}
-      />
+      {/* Quality selector modal - Pass available versions */}
+      {media?.mediaType === 'image' && (
+        <ResolutionSelector
+          availableQualities={Object.keys(media.versions || {}).filter(q => q !== 'processed_video')} // Pass available quality keys
+          currentQuality={currentQuality}
+          onQualityChange={(qualityKey) => {
+            setCurrentQuality(qualityKey); // Set quality based on key ('thumbnail', 'small', etc.)
+            setShowQualityModal(false);
+          }}
+          showModal={showQualityModal}
+          onToggleModal={() => setShowQualityModal(!showQualityModal)}
+          estimatedDataUsage={getCurrentQualitySize()} // Pass formatted size
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -493,29 +482,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderRadius: 20,
-    paddingVertical: 5,
+    paddingVertical: 8, // Adjusted padding
     paddingHorizontal: 10,
   },
   videoControlButton: {
-    padding: 5,
+    padding: 8, // Increased touch area
   },
-  videoProgress: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
-    width: 120,
-    marginHorizontal: 10,
+  videoProgressSlider: {
+    flex: 1, // Take available space
+    height: 40, // Make slider easier to grab
+    marginHorizontal: 8,
   },
-  videoProgressBar: {
-    height: '100%',
-    width: '30%',
-    backgroundColor: COLORS.PRIMARY,
-    borderRadius: 2,
-  },
-  videoDuration: {
+  videoTime: {
     color: 'white',
     fontSize: 12,
-    marginLeft: 5,
+    minWidth: 40, // Ensure space for time
+    textAlign: 'center',
   },
   loadingOverlay: {
     position: 'absolute',

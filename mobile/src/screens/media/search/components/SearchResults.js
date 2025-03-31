@@ -66,55 +66,51 @@ const SearchResults = ({
     };
   }, []);
   
-  // Render individual grid item
+  // Render individual grid item based on SearchIndex data structure
   const renderItem = ({ item }) => {
-    // Handle different media types
-    const isVideo = item.type === 'video';
-    const isDocument = item.type === 'document';
-    
+    // Extract relevant data (adjust based on actual API response)
+    const mediaId = item.contentId;
+    const isVideo = item.metadata?.mediaType === 'video';
+    // Use primaryThumbnailUrl if available in metadata, otherwise fallback
+    const thumbnailUrl = item.metadata?.primaryThumbnailUrl || item.metadata?.thumbnailUrl; // Adjust field name as needed
+
     return (
       <TouchableOpacity
         style={[styles.itemContainer, { width: itemWidth, height: itemWidth }]}
-        onPress={() => onItemPress(item)}
+        onPress={() => onItemPress({ _id: mediaId })} // Pass object with _id for consistency if needed by viewer
         activeOpacity={0.7}
       >
         {/* Media thumbnail */}
-        <Image
-          source={{ uri: item.thumbnailUrl }}
-          style={styles.thumbnail}
-          resizeMode="cover"
-        />
-        
+        {thumbnailUrl ? (
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.thumbnailPlaceholder}>
+             <Ionicons name="image-outline" size={32} color={COLORS.MUTED} />
+          </View>
+        )}
+
         {/* Media type indicator */}
-        {(isVideo || isDocument) && (
+        {isVideo && (
           <View style={styles.typeIndicator}>
             <Ionicons
-              name={isVideo ? 'videocam' : 'document-text'}
+              name={'videocam'}
               size={16}
               color="#FFFFFF"
             />
           </View>
         )}
-        
-        {/* Quality badge */}
-        {item.quality && (
-          <View style={styles.qualityBadge}>
-            <Text style={styles.qualityText}>{item.quality}</Text>
-          </View>
-        )}
-        
-        {/* Caption overlay (if exists) */}
-        {item.caption && (
-          <View style={styles.captionContainer}>
-            <Text style={styles.caption} numberOfLines={2}>
-              {item.caption}
-            </Text>
-          </View>
-        )}
+
+        {/* Quality badge - Removed as quality info might not be in search index */}
+        {/* Caption overlay - Removed as caption might not be in search index */}
+
       </TouchableOpacity>
     );
   };
-  
+
   // Handle empty list state
   const renderEmptyList = () => {
     if (loading) {
@@ -150,7 +146,7 @@ const SearchResults = ({
     <FlatList
       data={data}
       renderItem={renderItem}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => item._id || item.contentId} // Use unique ID from API
       numColumns={numColumns}
       contentContainerStyle={styles.gridContainer}
       ListEmptyComponent={renderEmptyList}
@@ -181,6 +177,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: COLORS.SURFACE || '#F7F7F7',
+  },
+  thumbnailPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.SURFACE || '#F7F7F7',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   typeIndicator: {
     position: 'absolute',

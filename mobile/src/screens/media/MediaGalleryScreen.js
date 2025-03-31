@@ -10,9 +10,9 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useDispatch, useSelector } from 'react-redux';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../config/constants';
+import MediaService from '../../services/mediaService'; // Import MediaService
 
 // Import components
 import MediaGrid from './components/MediaGrid';
@@ -20,92 +20,108 @@ import MediaFilterBar from './components/MediaFilterBar';
 import DateNavigator from './components/DateNavigator';
 import EmptyStateView from './components/EmptyStateView';
 
-// Actions to be implemented in the future
-// import { fetchMedia, setMediaFilter, setDateRange } from '../../redux/slices/mediaSlice';
+const MediaGalleryScreen = () => {
+  const navigation = useNavigation(); // Use hook for navigation
 
-const MediaGalleryScreen = ({ navigation }) => {
-  const dispatch = useDispatch();
-  
-  // Local state
+  // Local state for media data, loading, pagination, and filters
+  const [media, setMedia] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // For initial load indicator
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(30); // Items per page
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'image', 'video'
+  // Add state for date range if DateNavigator is used
+
+  // Local state for UI interactions
   const [showCalendar, setShowCalendar] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
-  
-  // Redux state
-  // These will be connected once we implement the mediaSlice
-  const media = []; // This will come from redux store
-  const isLoading = false; // This will come from redux store
-  const activeFilter = 'all'; // This will come from redux store
-  const currentMonth = new Date(); // This will come from redux store
-  
-  // Mock data for initial display
-  const mockMedia = Array.from({ length: 24 }, (_, i) => ({
-    id: `media-${i}`,
-    type: i % 7 === 0 ? 'video' : 'image',
-    thumbnailUrl: null, // In a real app, this would be a URL
-    quality: i % 5 === 0 ? 'HD' : i % 8 === 0 ? '4K' : i % 10 === 0 ? 'RAW' : 'SD',
-    width: 1080,
-    height: 1920,
-    createdAt: new Date(2025, 2, Math.floor(Math.random() * 30) + 1).toISOString(),
-    uploaderId: `user-${Math.floor(Math.random() * 5) + 1}`,
-    conversationId: `conversation-${Math.floor(Math.random() * 3) + 1}`,
-  }));
-  
-  // Fetch media on screen focus
+
+  // Fetch media function
+  const fetchMediaData = useCallback(async (currentPage = 1, isRefreshing = false) => {
+    if (isLoading || (!hasMore && !isRefreshing)) return; // Prevent multiple fetches
+
+    setIsLoading(true);
+    if (isRefreshing) setRefreshing(true);
+    if (currentPage === 1) setIsInitialLoading(true); // Show initial loader only on first page load
+
+    try {
+      const filterType = activeFilter === 'all' ? null : activeFilter;
+      const response = await MediaService.getMediaList(currentPage, limit, null, filterType); // Pass filterType
+
+      setMedia(prevMedia => currentPage === 1 ? response.media : [...prevMedia, ...response.media]);
+      setTotal(response.pagination.total);
+      setPage(currentPage);
+      setHasMore(response.media.length === limit && (currentPage * limit) < response.pagination.total);
+
+    } catch (error) {
+      console.error('Failed to fetch media:', error);
+      // Handle error display
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+      setIsInitialLoading(false);
+    }
+  }, [isLoading, hasMore, limit, activeFilter]); // Dependencies for fetchMediaData
+
+  // Fetch initial media on screen focus
   useFocusEffect(
     useCallback(() => {
-      // We'll replace this with real data fetching in the future
-      console.log('Fetching media...');
-      // dispatch(fetchMedia());
-      
+      fetchMediaData(1, true); // Fetch first page on focus, treat as refresh
       return () => {
-        // Cleanup if needed
+        // Optional cleanup
       };
-    }, [dispatch])
+    }, [fetchMediaData]) // Re-run if fetchMediaData changes (due to filter change)
   );
-  
+
   // Handle refresh
   const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    // We'll replace this with real data fetching in the future
-    setTimeout(() => {
-      console.log('Refreshing media...');
-      // dispatch(fetchMedia()).then(() => {
-      //   setRefreshing(false);
-      // });
-      setRefreshing(false);
-    }, 1500);
-  }, []);
-  
+    fetchMediaData(1, true); // Fetch page 1 and set refreshing state
+  }, [fetchMediaData]);
+
+  // Handle loading more items
+  const handleLoadMore = () => {
+    if (!isLoading && hasMore) {
+      fetchMediaData(page + 1);
+    }
+  };
+
   // Handle filter change
   const handleFilterChange = (filter) => {
-    console.log(`Filter changed to: ${filter}`);
-    // dispatch(setMediaFilter(filter));
+    setActiveFilter(filter);
+    // Reset state and fetch with new filter
+    setMedia([]);
+    setPage(1);
+    setTotal(0);
+    setHasMore(true);
+    // fetchMediaData will be called by useFocusEffect due to dependency change
   };
   
-  // Handle month change
+  // Handle month change (Placeholder - requires DateNavigator integration)
   const handleMonthChange = (month) => {
     console.log(`Month changed to: ${month}`);
-    // dispatch(setDateRange({ month }));
+    // Implement date range filtering and refetching here
     setShowCalendar(false);
   };
-  
+
   // Handle item selection
   const handleItemSelect = (item) => {
     if (isSelectionMode) {
-      const itemIndex = selectedItems.findIndex(i => i.id === item.id);
+      const itemIndex = selectedItems.findIndex(i => i._id === item._id); // Use _id
       if (itemIndex > -1) {
-        setSelectedItems(prevItems => prevItems.filter(i => i.id !== item.id));
+        setSelectedItems(prevItems => prevItems.filter(i => i._id !== item._id));
       } else {
         setSelectedItems(prevItems => [...prevItems, item]);
       }
     } else {
-      // Navigate to media viewer
-      navigation.navigate('MediaViewer', { mediaId: item.id });
+      // Navigate to media viewer using _id
+      navigation.navigate('MediaViewer', { mediaId: item._id });
     }
   };
-  
+
   // Handle item long press
   const handleItemLongPress = (item) => {
     if (!isSelectionMode) {
@@ -119,27 +135,35 @@ const MediaGalleryScreen = ({ navigation }) => {
     setIsSelectionMode(false);
     setSelectedItems([]);
   };
-  
-  // Selection actions
+
+  // Selection actions (Placeholders - Implement actual logic)
   const handleShare = () => {
     console.log(`Sharing ${selectedItems.length} items`);
-    // Implementation will come later
-    setIsSelectionMode(false);
-    setSelectedItems([]);
+    // TODO: Implement sharing logic
+    handleCancelSelection();
   };
-  
+
   const handleSave = () => {
     console.log(`Saving ${selectedItems.length} items`);
-    // Implementation will come later
-    setIsSelectionMode(false);
-    setSelectedItems([]);
+    // TODO: Implement saving logic (downloading media)
+    handleCancelSelection();
   };
-  
-  const handleDelete = () => {
+
+  const handleDelete = async () => {
     console.log(`Deleting ${selectedItems.length} items`);
-    // Implementation will come later
-    setIsSelectionMode(false);
-    setSelectedItems([]);
+    // TODO: Add confirmation dialog
+    const idsToDelete = selectedItems.map(item => item._id);
+    try {
+      // Call delete service for each item (or batch if API supports)
+      await Promise.all(idsToDelete.map(id => MediaService.deleteMedia(id)));
+      // Refresh the list after deletion
+      handleRefresh();
+    } catch (error) {
+      console.error('Failed to delete media:', error);
+      // Show error message
+    } finally {
+      handleCancelSelection();
+    }
   };
   
   // Render header
@@ -154,9 +178,8 @@ const MediaGalleryScreen = ({ navigation }) => {
             <Ionicons name="close" size={24} color={COLORS.PRIMARY} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Selected ({selectedItems.length})</Text>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="checkmark" size={24} color={COLORS.PRIMARY} />
-          </TouchableOpacity>
+          {/* Removed checkmark button, actions are in toolbar */}
+          <View style={{ width: 40 }} /> {/* Placeholder for balance */}
         </>
       ) : (
         <>
@@ -168,10 +191,10 @@ const MediaGalleryScreen = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Media Gallery</Text>
           <View style={styles.headerRightContainer}>
-            <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Search')}>
+            <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('MediaSearch')}>
               <Ionicons name="search" size={24} color={COLORS.TEXT} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
+            <TouchableOpacity style={styles.headerButton} onPress={() => console.log('More options...')}>
               <Ionicons name="ellipsis-vertical" size={24} color={COLORS.TEXT} />
             </TouchableOpacity>
           </View>
@@ -213,28 +236,29 @@ const MediaGalleryScreen = ({ navigation }) => {
       {!isSelectionMode && (
         <>
           <MediaFilterBar
-            activeFilter={activeFilter}
+            activeFilter={activeFilter} // Pass current filter state
             onFilterChange={handleFilterChange}
           />
-          
-          <DateNavigator
-            currentMonth={currentMonth}
+
+          {/* Date Navigator - Requires state and logic for date range filtering */}
+          {/* <DateNavigator
+            currentMonth={currentMonth} // Needs state management
             showCalendar={showCalendar}
             onToggleCalendar={() => setShowCalendar(!showCalendar)}
             onMonthChange={handleMonthChange}
-          />
+          /> */}
         </>
       )}
-      
-      {isLoading && !refreshing ? (
+
+      {isInitialLoading && !refreshing ? ( // Show loader only on initial load
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.PRIMARY} />
         </View>
-      ) : mockMedia.length === 0 ? (
+      ) : media.length === 0 ? ( // Use fetched media length
         <EmptyStateView activeFilter={activeFilter} />
       ) : (
         <MediaGrid
-          data={mockMedia}
+          data={media} // Use fetched media data
           numColumns={3}
           refreshControl={
             <RefreshControl
@@ -243,9 +267,12 @@ const MediaGalleryScreen = ({ navigation }) => {
               colors={[COLORS.PRIMARY]}
             />
           }
+          onEndReached={handleLoadMore} // Add handler for loading more
+          onEndReachedThreshold={0.5} // Adjust threshold as needed
+          ListFooterComponent={isLoading && !isInitialLoading ? <ActivityIndicator size="small" color={COLORS.PRIMARY} style={{ marginVertical: 20 }} /> : null} // Loading indicator at bottom
           onItemPress={handleItemSelect}
           onItemLongPress={handleItemLongPress}
-          selectedItems={selectedItems}
+          selectedItems={selectedItems} // Pass selected items state
           isSelectionMode={isSelectionMode}
         />
       )}

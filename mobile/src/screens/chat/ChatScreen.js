@@ -244,29 +244,14 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
   
-  // Process and send media messages
+  // Process and send media messages using presigned URL flow
   const handleSendMediaMessages = async (assets, type) => {
-    // Process each asset
     assets.forEach(async (asset) => {
-      // Create form data for upload
-      const formData = new FormData();
-      
-      // Append file
-      const fileExtension = asset.uri.split('.').pop();
-      const fileName = `${uuidv4()}.${fileExtension}`;
-      
-      formData.append('media', {
-        uri: asset.uri,
-        name: fileName,
-        type: asset.mimeType || `${type}/${fileExtension}`
-      });
-      
-      formData.append('conversationId', conversationId);
-      
-      // Generate temporary ID for optimistic update
       const tempId = uuidv4();
-      
-      // Create pending message for optimistic update
+      const filename = asset.uri.split('/').pop();
+      const mimeType = asset.mimeType || `${type}/${filename.split('.').pop()}`;
+
+      // 1. Create pending message for optimistic UI
       const pendingMessage = {
         _id: tempId,
         tempId,
@@ -277,47 +262,64 @@ const ChatScreen = ({ route, navigation }) => {
         },
         conversation: conversationId,
         type,
+        // Use local URI for optimistic display
         media: [{
-          url: asset.uri,
+          localUri: asset.uri, // Store local URI for display while uploading
           type,
           width: asset.width,
           height: asset.height,
           duration: asset.duration
         }],
-        status: 'sending',
+        status: 'sending', // Initial status
         createdAt: new Date().toISOString()
       };
-      
-      // Add to pending messages for optimistic update
       dispatch(addPendingMessage(pendingMessage));
-      
+
       try {
-        // Upload media
-        const mediaResponse = await MediaService.uploadMedia(formData, (progress) => {
-          console.log(`Upload progress: ${progress}%`);
+        // 2. Get presigned URL and initial mediaId from backend
+        const presignedData = await MediaService.getPresignedUploadUrl(filename, mimeType, conversationId);
+        const { presignedUrl, key, mediaId } = presignedData;
+
+        // Update pending message status (optional)
+        // dispatch(updatePendingMessageStatus(tempId, 'uploading'));
+
+        // 3. Upload file directly to S3
+        // Need to fetch the file blob first for XMLHttpRequest
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+
+        await MediaService.uploadToS3(presignedUrl, blob, mimeType, (progress) => {
+          console.log(`Upload progress for ${mediaId}: ${progress}%`);
+          // Optional: Update progress in UI via Redux
+          // dispatch(updatePendingMessageProgress(tempId, progress));
         });
-        
-        // Send message with uploaded media
+
+        // 4. Confirm upload with backend to trigger processing
+        await MediaService.confirmUpload(mediaId);
+
+        // 5. Send the actual message link via backend/websocket
+        // The message payload now only needs the mediaId reference
         dispatch(sendMessage({
           conversationId,
-          content: '',
+          content: '', // No text content for media message
           type,
-          media: [{
-            url: mediaResponse.media.originalUrl,
-            thumbnailUrl: mediaResponse.media.thumbnailUrl,
-            type,
-            width: mediaResponse.media.width,
-            height: mediaResponse.media.height,
-            duration: mediaResponse.media.duration
-          }]
+          media: [mediaId], // Send only the mediaId
+          tempId: tempId // Include tempId to replace the pending message
         }));
+
+        // Note: The messageSlice's sendMessage thunk should handle replacing
+        // the pending message with the real one using tempId.
+        // The real message received via WebSocket should contain populated media details.
+
       } catch (error) {
-        console.error('Media upload error:', error);
-        // Todo: Handle upload error and update UI
+        console.error(`Error sending media ${filename}:`, error);
+        // Update pending message status to 'failed'
+        // dispatch(updatePendingMessageStatus(tempId, 'failed', error.message));
+        // Show error to user
       }
     });
   };
-  
+
   // Render message item
   const renderMessageItem = ({ item }) => {
     const isOwnMessage = item.sender?._id === user.id;
@@ -373,19 +375,23 @@ const ChatScreen = ({ route, navigation }) => {
               />
             </TouchableOpacity>
           )}
-          
+
+          {/* Adjust Video Rendering if needed based on final message payload */}
           {item.type === 'video' && item.media && item.media.length > 0 && (
             <TouchableOpacity
               onPress={() => {
+                // Pass mediaId or full media object if available
                 navigation.navigate('MediaViewer', {
-                  media: item.media[0],
+                  mediaId: item.media[0]._id || item.media[0], // Assuming message contains populated media or just ID
+                  // media: item.media[0], // Alternative if fully populated
                   type: 'video'
                 });
               }}
             >
               <View style={styles.videoContainer}>
                 <Image
-                  source={{ uri: item.media[0].thumbnailUrl }}
+                  // Use primaryThumbnailUrl or localUri for pending messages
+                  source={{ uri: item.media[0].primaryThumbnailUrl || item.media[0].localUri }}
                   style={[
                     styles.messageVideo,
                     {

@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../config/constants';
+import SearchService from '../../services/searchService'; // Import SearchService
 
 const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,91 +37,88 @@ const SearchScreen = () => {
     if (searchQuery.trim().length === 0) return;
     
     setIsLoading(true);
-    
+    // If media tab is active, navigate to dedicated screen
+    if (activeTab === 'media') {
+      navigation.navigate('MediaSearch', { initialQuery: searchQuery });
+      setSearchResults([]); // Clear results in this screen
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setSearchResults([]); // Clear previous results
+
     try {
-      // In a real app, this would call an API endpoint
-      // For now, we'll just simulate a search with mock data
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Mock search results based on active tab
-      let results = [];
-      
-      if (activeTab === 'people') {
-        results = [
-          { id: '1', type: 'user', name: 'John Smith', username: '@johnsmith', avatar: null },
-          { id: '2', type: 'user', name: 'Sarah Johnson', username: '@sarahj', avatar: null },
-          { id: '3', type: 'user', name: 'Michael Brown', username: '@mikebrown', avatar: null },
-        ].filter(user => 
-          user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.username.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      } else if (activeTab === 'messages') {
-        results = [
-          { id: '1', type: 'message', content: 'Hey, how are you doing?', sender: 'John Smith', timestamp: '2h ago' },
-          { id: '2', type: 'message', content: 'Did you see the latest photos?', sender: 'Sarah Johnson', timestamp: '1d ago' },
-          { id: '3', type: 'message', content: 'Let\'s meet up this weekend', sender: 'Michael Brown', timestamp: '3d ago' },
-        ].filter(message => 
-          message.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          message.sender.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      } else if (activeTab === 'media') {
-        // For media search, we'll redirect to the dedicated media search screen
-        navigation.navigate('MediaSearch', { initialQuery: searchQuery });
-        results = [];
-      }
-      
-      setSearchResults(results);
+      const contentTypes = activeTab === 'people' ? ['user'] : ['message']; // Determine content type based on tab
+      const response = await SearchService.search(searchQuery, contentTypes);
+      // Assuming the API returns results in a structure compatible with rendering
+      // Need to adapt rendering based on actual API response structure
+      setSearchResults(response.results || []);
     } catch (error) {
       console.error('Search error:', error);
+      setSearchResults([]);
     } finally {
       setIsLoading(false);
     }
   };
   
+  // Render search result based on actual data structure from API
+  // This needs adjustment based on the SearchIndex model and API response
   const renderSearchResult = ({ item }) => {
-    if (item.type === 'user') {
+    // Assuming item structure from SearchIndex model
+    const { contentType, content, metadata, userId, conversationId, createdAt, contentId } = item;
+
+    if (contentType === 'user') { // Assuming API returns user details in metadata or needs separate fetch
+      const userName = metadata?.username || 'Unknown User';
+      const userHandle = metadata?.email || ''; // Or username
       return (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.resultItem}
-          onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
+          onPress={() => navigation.navigate('UserProfile', { userId: contentId })} // Use contentId as userId
         >
           <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+            <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
           </View>
           <View style={styles.resultContent}>
-            <Text style={styles.resultTitle}>{item.name}</Text>
-            <Text style={styles.resultSubtitle}>{item.username}</Text>
+            <Text style={styles.resultTitle}>{userName}</Text>
+            <Text style={styles.resultSubtitle}>{userHandle}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.MUTED} />
         </TouchableOpacity>
       );
-    } else if (item.type === 'message') {
+    } else if (contentType === 'message') {
+      // Need sender info - API might need to populate this or fetch separately
+      const senderName = metadata?.senderName || 'Unknown Sender';
+      const timestamp = new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); // Format time
       return (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.resultItem}
-          onPress={() => navigation.navigate('Chat', { name: item.sender })}
+          // Navigate to conversation, potentially highlighting the message
+          onPress={() => navigation.navigate('Chat', { conversationId: conversationId /*, messageId: contentId */ })}
         >
           <View style={styles.messageIcon}>
             <Ionicons name="chatbubble-ellipses-outline" size={24} color={COLORS.PRIMARY} />
           </View>
           <View style={styles.resultContent}>
             <View style={styles.messageHeader}>
-              <Text style={styles.resultTitle}>{item.sender}</Text>
-              <Text style={styles.timestamp}>{item.timestamp}</Text>
+              <Text style={styles.resultTitle}>{senderName}</Text>
+              <Text style={styles.timestamp}>{timestamp}</Text>
             </View>
-            <Text 
+            <Text
               style={styles.resultSubtitle}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {item.content}
+              {content}
             </Text>
           </View>
         </TouchableOpacity>
       );
     }
-    
-    return null;
+
+    // Add rendering for other content types if needed
+
+    return null; // Return null for unhandled types
   };
   
   return (
@@ -199,7 +197,7 @@ const SearchScreen = () => {
           <FlatList
             data={searchResults}
             renderItem={renderSearchResult}
-            keyExtractor={item => item.id}
+            keyExtractor={item => item._id || item.contentId} // Use unique ID from API response
             contentContainerStyle={styles.resultsList}
             showsVerticalScrollIndicator={false}
           />

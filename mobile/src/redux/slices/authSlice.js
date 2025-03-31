@@ -106,7 +106,8 @@ const initialState = {
   accessToken: null,
   refreshToken: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: false, // For login, register, logout, updateProfile actions
+  isInitialAuthLoading: true, // For initial token check/refresh/loadUser
   error: null,
 };
 
@@ -121,6 +122,10 @@ const authSlice = createSlice({
     setUser: (state, action) => {
       state.user = action.payload;
       state.isAuthenticated = true;
+    },
+    // New reducer to explicitly set initial loading state
+    setInitialAuthLoading: (state, action) => {
+      state.isInitialAuthLoading = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -189,18 +194,37 @@ const authSlice = createSlice({
         state.refreshToken = null;
       })
       
+      // Refresh Token
+      .addCase(refreshToken.pending, (state) => {
+        state.isInitialAuthLoading = true;
+      })
+      .addCase(refreshToken.fulfilled, (state, action) => {
+        state.accessToken = action.payload.accessToken;
+        // Don't set isInitialAuthLoading to false here, wait for loadUser
+      })
+      .addCase(refreshToken.rejected, (state) => {
+        state.isInitialAuthLoading = false; // Stop initial loading on refresh failure
+        state.isAuthenticated = false;
+        state.user = null;
+        state.accessToken = null;
+        state.refreshToken = null;
+      })
+      
       // Load User
       .addCase(loadUser.pending, (state) => {
-        state.isLoading = true;
+        // Only set initial loading if it's not already false (e.g., from failed refresh)
+        if (state.isInitialAuthLoading !== false) {
+          state.isInitialAuthLoading = true;
+        }
         state.error = null;
       })
       .addCase(loadUser.fulfilled, (state, action) => {
-        state.isLoading = false;
+        state.isInitialAuthLoading = false; // Stop initial loading on success
         state.isAuthenticated = true;
         state.user = action.payload;
       })
       .addCase(loadUser.rejected, (state, action) => {
-        state.isLoading = false;
+        state.isInitialAuthLoading = false; // Stop initial loading on failure
         state.isAuthenticated = false;
         state.user = null;
         state.error = action.payload;
@@ -222,5 +246,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setUser } = authSlice.actions;
+// Export the new action
+export const { clearError, setUser, setInitialAuthLoading } = authSlice.actions;
 export default authSlice.reducer;

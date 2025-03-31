@@ -3,6 +3,49 @@ const mongoose = require('mongoose');
 const Message = require('../models/message.model');
 const Conversation = require('../models/conversation.model');
 const logger = require('../utils/logger');
+const axios = require('axios'); // For triggering search indexing
+
+// Helper function to trigger search indexing for a message
+const triggerSearchIndex = async (messageDoc) => {
+  // Avoid indexing deleted or system messages directly
+  if (messageDoc.type === 'system' || messageDoc.metadata?.deleted) {
+    return;
+  }
+  try {
+    const searchServiceUrl = process.env.SEARCH_SERVICE_URL || 'http://search-service:3004';
+    await axios.post(`${searchServiceUrl}/index`, {
+      contentId: messageDoc._id,
+      contentType: 'message',
+      userId: messageDoc.sender, // Index under the sender's ID
+      content: messageDoc.content, // Text content
+      metadata: {
+        type: messageDoc.type,
+        mediaCount: messageDoc.media?.length || 0,
+        edited: messageDoc.edited || false,
+      },
+      conversationId: messageDoc.conversation,
+      createdAt: messageDoc.createdAt
+    });
+    logger.info(`Triggered search indexing for message: ${messageDoc._id}`);
+  } catch (error) {
+    logger.error(`Failed to trigger search indexing for message ${messageDoc._id}: ${error.message}`);
+    // Handle error appropriately
+  }
+};
+
+// Helper function to trigger search index deletion for a message
+const triggerSearchDelete = async (messageId, userId) => {
+   try {
+    const searchServiceUrl = process.env.SEARCH_SERVICE_URL || 'http://search-service:3004';
+    // Note: The search index delete endpoint expects contentType and contentId in params
+    // Adjust if the search service API expects userId for deletion authorization
+    await axios.delete(`${searchServiceUrl}/delete/message/${messageId}`);
+    logger.info(`Triggered search index deletion for message: ${messageId}`);
+  } catch (error) {
+    logger.error(`Failed to trigger search index deletion for message ${messageId}: ${error.message}`);
+  }
+};
+
 
 /**
  * Get messages for a conversation
@@ -43,6 +86,7 @@ exports.getMessages = async (req, res) => {
       .populate('sender', 'username profilePicture')
       .populate('readBy.user', 'username profilePicture')
       .populate('replyTo')
+      .populate('media') // Populate the media field
       .lean();
 
     // Get unread count for this user
@@ -127,13 +171,16 @@ exports.sendMessage = async (req, res) => {
     
     await conversation.save();
 
-    // Populate sender details
-    await newMessage.populate('sender', 'username profilePicture');
-    
+    // Populate details for the response and WebSocket event
+    await newMessage.populate([
+      { path: 'sender', select: 'username profilePicture' },
+      { path: 'media' } // Populate media details
+    ]);
+
     // Populate reply message if exists
     if (replyTo) {
-      await newMessage.populate({
-        path: 'replyTo',
+      await newMessage.populate({ // This might need adjustment if populate doesn't chain well
+        path: 'replyTo', // Consider populating replyTo within the array above if possible
         populate: {
           path: 'sender',
           select: 'username profilePicture'
@@ -153,6 +200,10 @@ exports.sendMessage = async (req, res) => {
       message: 'Message sent successfully',
       data: newMessage
     });
+
+    // Trigger search indexing asynchronously
+    triggerSearchIndex(newMessage).catch(err => logger.error(`Async search index trigger failed: ${err.message}`));
+
   } catch (error) {
     logger.error(`Send message error: ${error.message}`);
     res.status(500).json({ error: 'Server error', message: error.message });
@@ -218,6 +269,10 @@ exports.deleteMessage = async (req, res) => {
     res.status(200).json({
       message: 'Message deleted successfully'
     });
+
+    // Trigger search index deletion asynchronously
+    triggerSearchDelete(messageId, userId).catch(err => logger.error(`Async search delete trigger failed: ${err.message}`));
+
   } catch (error) {
     logger.error(`Delete message error: ${error.message}`);
     res.status(500).json({ error: 'Server error', message: error.message });
@@ -280,6 +335,10 @@ exports.editMessage = async (req, res) => {
       message: 'Message edited successfully',
       data: message
     });
+
+    // Trigger search re-indexing asynchronously
+    triggerSearchIndex(message).catch(err => logger.error(`Async search index trigger failed after edit: ${err.message}`));
+
   } catch (error) {
     logger.error(`Edit message error: ${error.message}`);
     res.status(500).json({ error: 'Server error', message: error.message });

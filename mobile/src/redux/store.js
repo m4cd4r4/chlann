@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
+// Restore other reducers
 import conversationReducer from './slices/conversationSlice';
 import messageReducer from './slices/messageSlice';
 import mediaReducer from './slices/mediaSlice';
@@ -8,11 +9,13 @@ import uiReducer from './slices/uiSlice';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    // Restore other reducers
     conversations: conversationReducer,
     messages: messageReducer,
     media: mediaReducer,
     ui: uiReducer,
   },
+  // Restore custom middleware
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {

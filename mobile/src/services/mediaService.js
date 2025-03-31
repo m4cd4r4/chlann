@@ -24,63 +24,37 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Base URL for media service assumed to be mapped by API Gateway
+const MEDIA_API_BASE = `${API_URL}${ROUTES.MEDIA}`; // e.g., http://localhost:8000/api/media
+
 const MediaService = {
   /**
-   * Upload media file
-   * @param {FormData} formData - Form data with media file and metadata
-   * @param {Function} onProgress - Optional progress callback
-   * @returns {Promise<Object>} Uploaded media details
-   */
-  uploadMedia: async (formData, onProgress = null) => {
-    const config = {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    };
-    
-    if (onProgress) {
-      config.onUploadProgress = (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onProgress(percentCompleted);
-      };
-    }
-    
-    const response = await apiClient.post(ROUTES.MEDIA_UPLOAD, formData, config);
-    return response.data;
-  },
-  
-  /**
    * Get presigned URL for direct upload to S3
-   * @param {string} fileName - Original file name
-   * @param {string} fileType - MIME type
-   * @param {number} fileSize - File size in bytes
-   * @returns {Promise<Object>} Presigned URL details
+   * @param {string} filename - Original file name
+   * @param {string} mimeType - MIME type
+   * @param {string} conversationId - Optional conversation ID to associate
+   * @param {string} messageId - Optional message ID to associate
+   * @returns {Promise<Object>} Presigned URL details { presignedUrl, key, mediaId }
    */
-  getPresignedUrl: async (fileName, fileType, fileSize) => {
-    const response = await apiClient.post(ROUTES.PRESIGNED_URL, {
-      fileName,
-      fileType,
-      fileSize
+  getPresignedUploadUrl: async (filename, mimeType, conversationId = null, messageId = null) => {
+    // Assuming ROUTES.PRESIGNED_URL points to the correct endpoint like '/presigned-upload-url' relative to MEDIA_API_BASE
+    const response = await apiClient.post(`${MEDIA_API_BASE}/presigned-upload-url`, {
+      filename,
+      mimeType,
+      conversationId,
+      messageId
     });
     return response.data;
   },
-  
+
   /**
-   * Confirm upload completion
-   * @param {string} mediaId - Media ID
-   * @param {string} conversationId - Optional conversation ID
-   * @param {string} messageId - Optional message ID
-   * @param {Array} peopleTagged - Optional array of user IDs tagged in the media
-   * @returns {Promise<Object>} Processed media details
+   * Confirm upload completion and trigger processing
+   * @param {string} mediaId - Media ID obtained from getPresignedUploadUrl
+   * @returns {Promise<Object>} Confirmation status { message, mediaId, status }
    */
-  confirmUpload: async (mediaId, conversationId = null, messageId = null, peopleTagged = []) => {
+  confirmUpload: async (mediaId) => {
     const payload = { mediaId };
-    
-    if (conversationId) payload.conversationId = conversationId;
-    if (messageId) payload.messageId = messageId;
-    if (peopleTagged && peopleTagged.length > 0) payload.peopleTagged = peopleTagged;
-    
-    const response = await apiClient.post(`${ROUTES.MEDIA}/confirm-upload`, payload);
+    const response = await apiClient.post(`${MEDIA_API_BASE}/confirm-upload`, payload);
     return response.data;
   },
   
@@ -97,22 +71,20 @@ const MediaService = {
    */
   getMediaList: async (
     page = 1, 
-    limit = 20, 
-    mediaType = null, 
-    conversationId = null, 
-    startDate = null, 
-    endDate = null, 
-    peopleTagged = null
+    limit = 20,
+    conversationId = null,
+    mediaType = null
   ) => {
-    let url = `${ROUTES.MEDIA}?page=${page}&limit=${limit}`;
-    
-    if (mediaType) url += `&mediaType=${mediaType}`;
-    if (conversationId) url += `&conversationId=${conversationId}`;
-    if (startDate) url += `&startDate=${startDate}`;
-    if (endDate) url += `&endDate=${endDate}`;
-    if (peopleTagged) url += `&peopleTagged=${peopleTagged.join(',')}`;
-    
-    const response = await apiClient.get(url);
+    const params = {
+      page,
+      limit,
+      conversationId,
+      mediaType
+    };
+    // Remove null/undefined params
+    Object.keys(params).forEach(key => params[key] == null && delete params[key]);
+
+    const response = await apiClient.get(MEDIA_API_BASE, { params });
     return response.data;
   },
   
@@ -122,26 +94,22 @@ const MediaService = {
    * @returns {Promise<Object>} Media details
    */
   getMediaById: async (mediaId) => {
-    const response = await apiClient.get(`${ROUTES.MEDIA}/${mediaId}`);
+    const response = await apiClient.get(`${MEDIA_API_BASE}/${mediaId}`);
     return response.data;
   },
   
   /**
-   * Update media metadata
+   * Update media metadata (caption, peopleTagged)
    * @param {string} mediaId - Media ID
-   * @param {Array} peopleTagged - People tagged in the media
-   * @param {boolean} isPublic - Whether the media is public
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} Updated media
+   * @param {Object} updates - Object containing updates { caption?, peopleTagged? }
+   * @returns {Promise<Object>} Updated media object
    */
-  updateMedia: async (mediaId, peopleTagged = null, isPublic = null, metadata = null) => {
+  updateMedia: async (mediaId, updates) => {
     const payload = {};
-    
-    if (peopleTagged !== null) payload.peopleTagged = peopleTagged;
-    if (isPublic !== null) payload.isPublic = isPublic;
-    if (metadata !== null) payload.metadata = metadata;
-    
-    const response = await apiClient.put(`${ROUTES.MEDIA}/${mediaId}`, payload);
+    if (updates.caption !== undefined) payload.caption = updates.caption;
+    if (updates.peopleTagged !== undefined) payload.peopleTagged = updates.peopleTagged;
+
+    const response = await apiClient.put(`${MEDIA_API_BASE}/${mediaId}`, payload);
     return response.data;
   },
   
@@ -151,44 +119,12 @@ const MediaService = {
    * @returns {Promise<Object>} Success message
    */
   deleteMedia: async (mediaId) => {
-    const response = await apiClient.delete(`${ROUTES.MEDIA}/${mediaId}`);
+    const response = await apiClient.delete(`${MEDIA_API_BASE}/${mediaId}`);
     return response.data;
   },
-  
+
   /**
-   * Search media by various criteria
-   * @param {string} query - Search query
-   * @param {string} mediaType - Filter by media type
-   * @param {string} startDate - Filter by start date
-   * @param {string} endDate - Filter by end date
-   * @param {Array} peopleTagged - Filter by tagged people
-   * @param {number} page - Page number
-   * @param {number} limit - Items per page
-   * @returns {Promise<Object>} Search results and pagination info
-   */
-  searchMedia: async (
-    query = '', 
-    mediaType = null, 
-    startDate = null, 
-    endDate = null, 
-    peopleTagged = null,
-    page = 1,
-    limit = 20
-  ) => {
-    let url = `${ROUTES.MEDIA}/search?page=${page}&limit=${limit}`;
-    
-    if (query) url += `&query=${encodeURIComponent(query)}`;
-    if (mediaType) url += `&mediaType=${mediaType}`;
-    if (startDate) url += `&startDate=${startDate}`;
-    if (endDate) url += `&endDate=${endDate}`;
-    if (peopleTagged) url += `&peopleTagged=${peopleTagged.join(',')}`;
-    
-    const response = await apiClient.get(url);
-    return response.data;
-  },
-  
-  /**
-   * Upload media to S3 directly using presigned URL
+   * Upload file to S3 directly using presigned URL
    * @param {string} presignedUrl - Presigned URL for upload
    * @param {Blob} file - File to upload
    * @param {string} contentType - Content type
@@ -266,16 +202,9 @@ const MediaService = {
     
     const response = await apiClient.get(url);
     return response.data;
-  },
-  
-  /**
-   * Get media statistics
-   * @returns {Promise<Object>} Media statistics
-   */
-  getMediaStats: async () => {
-    const response = await apiClient.get(`${ROUTES.MEDIA}/stats`);
-    return response.data;
   }
+  // Removed searchMedia, getMediaByPerson, getMediaByDateRange, getMediaStats
+  // These should be handled by searchService.js
 };
 
 export default MediaService;

@@ -124,39 +124,8 @@ const SearchService = {
     const url = `${ROUTES.SEARCH}/similar/${contentType}/${contentId}`;
     const response = await apiClient.get(url);
     return response.data;
-  },
-  
-  /**
-   * Index content for searching
-   * @param {string} contentId - Content ID
-   * @param {string} contentType - Content type
-   * @param {string} content - Text content
-   * @param {Object} metadata - Additional metadata
-   * @param {string} conversationId - Optional conversation ID
-   * @param {Array} peopleTagged - Optional people tagged
-   * @returns {Promise<Object>} Indexed content
-   */
-  indexContent: async (
-    contentId,
-    contentType,
-    content,
-    metadata = {},
-    conversationId = null,
-    peopleTagged = []
-  ) => {
-    const payload = {
-      contentId,
-      contentType,
-      content,
-      metadata
-    };
-    
-    if (conversationId) payload.conversationId = conversationId;
-    if (peopleTagged.length > 0) payload.peopleTagged = peopleTagged;
-    
-    const response = await apiClient.post(`${ROUTES.SEARCH}/index`, payload);
-    return response.data;
   }
+  // Removed indexContent as indexing is handled by backend services
 };
 
 export default SearchService;
