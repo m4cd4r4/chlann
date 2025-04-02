@@ -29482,3 +29482,9 @@
 {"level":"error","message":"Redis connection error: Error: read ECONNRESET","service":"auth-service","timestamp":"2025-03-28T12:39:01.135Z"}
 {"level":"error","message":"Redis connection error: Error: read ECONNRESET","service":"auth-service","timestamp":"2025-03-28T12:39:01.640Z"}
 {"level":"error","message":"Redis connection error: Error: read ECONNRESET","service":"auth-service","timestamp":"2025-03-28T12:39:01.640Z"}
+{"level":"info","message":"Auth Service running on port 3001","service":"auth-service","timestamp":"2025-04-01T12:52:27.990Z"}
+{"level":"info","message":"Connected to Redis","service":"auth-service","timestamp":"2025-04-01T12:52:28.009Z"}
+{"level":"info","message":"Connected to MongoDB","service":"auth-service","timestamp":"2025-04-01T12:52:28.031Z"}
+{"level":"info","message":"Auth Service running on port 3001","service":"auth-service","timestamp":"2025-04-01T13:52:09.839Z"}
+{"level":"info","message":"Connected to Redis","service":"auth-service","timestamp":"2025-04-01T13:52:09.860Z"}
+{"level":"info","message":"Connected to MongoDB","service":"auth-service","timestamp":"2025-04-01T13:52:09.883Z"}

@@ -27,11 +27,6 @@
         "json"
       ],
       "nonPersistent": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "your-project-id"
-      }
     }
   }
 }

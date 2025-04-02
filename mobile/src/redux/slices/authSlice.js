@@ -183,18 +183,7 @@ const authSlice = createSlice({
         state.refreshToken = null;
       })
       
-      // Refresh Token
-      .addCase(refreshToken.fulfilled, (state, action) => {
-        state.accessToken = action.payload.accessToken;
-      })
-      .addCase(refreshToken.rejected, (state) => {
-        state.isAuthenticated = false;
-        state.user = null;
-        state.accessToken = null;
-        state.refreshToken = null;
-      })
-      
-      // Refresh Token
+      // Refresh Token (Removed duplicate fulfilled/rejected cases above)
       .addCase(refreshToken.pending, (state) => {
         state.isInitialAuthLoading = true;
       })

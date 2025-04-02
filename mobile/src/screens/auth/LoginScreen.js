@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT,
   },
   errorText: {
-    color: COLORS.ERROR,
+    color: COLORS.DANGER, // Changed from ERROR to DANGER
     fontSize: 14,
     marginTop: 4,
   },

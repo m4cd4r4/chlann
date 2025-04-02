@@ -1,10 +1,17 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { Provider } from 'react-redux';
+import { NavigationContainer } from '@react-navigation/native';
+import store from './src/redux/store'; // Assuming store is exported from here
+import AppNavigation from './src/navigation/AppNavigation'; // Import the main navigator
+import { StatusBar } from 'expo-status-bar'; // Import StatusBar
 
 export default function App() {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Welcome to ChlannClaude!</Text>
-    </View>
+    <Provider store={store}>
+      <NavigationContainer>
+        <AppNavigation />
+        <StatusBar style="auto" /> {/* Optional: Add status bar */}
+      </NavigationContainer>
+    </Provider>
   );
 }
