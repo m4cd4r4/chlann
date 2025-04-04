@@ -13,7 +13,13 @@ const PORT = process.env.PORT || 8000;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+// Explicitly configure CORS to allow the frontend origin
+app.use(cors({
+  origin: 'http://localhost:8081', // Allow requests from Expo Metro bundler
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allow common methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allow necessary headers
+  credentials: true // Allow cookies if needed (might not be necessary here)
+}));
 app.use(express.json());
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 
