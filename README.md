@@ -1,4 +1,4 @@
-# ChlannClaude - High-Resolution Media Sharing Messenger
+# Chlann - High-Resolution Media Sharing Messenger
 
 A media-messaging app focusing on high-resolution media sharing, along with text and links, designed for a small group of users (~20) with self-hosting capabilities.
 
@@ -76,8 +76,8 @@ The application follows a microservices architecture for flexibility and scalabi
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/chlannClaude.git
-   cd chlannClaude
+   git clone https://github.com/yourusername/chlann.git
+   cd chlann
    ```
 
 2. Start the development environment
@@ -121,7 +121,7 @@ For production deployment on a VPS:
 ## Project Structure
 
 ```
-chlannClaude/
+chlann/
 ├── backend/
 │   ├── api-gateway/       # API gateway service
 │   ├── auth-service/      # Authentication service
