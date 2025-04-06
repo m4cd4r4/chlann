@@ -142,6 +142,4 @@ chlann/
 └── docs/                  # Documentation
 ```
 
-## License
-
-[MIT License](LICENSE)
+## m4cd4r4
