@@ -63,7 +63,7 @@ const MediaGrid = ({
 
 const styles = StyleSheet.create({
   contentContainer: {
-    padding: 2,
+    padding: 4, // Increased padding for better spacing
   },
 });
 

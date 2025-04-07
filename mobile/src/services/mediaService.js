@@ -202,9 +202,68 @@ const MediaService = {
     
     const response = await apiClient.get(url);
     return response.data;
-  }
+  },
   // Removed searchMedia, getMediaByPerson, getMediaByDateRange, getMediaStats
   // These should be handled by searchService.js
+
+  /**
+   * High-level function to handle the entire upload process for a single asset.
+   * @param {object} asset - Asset object from expo-image-picker result
+   * @param {Function} onProgress - Progress callback (receives percentage 0-100)
+   * @param {string} conversationId - Optional conversation ID
+   * @param {string} messageId - Optional message ID
+   * @returns {Promise<Object>} Result from confirmUpload or throws error
+   */
+  uploadMedia: async (asset, onProgress = null, conversationId = null, messageId = null) => {
+    const tempId = asset.assetId || `${Date.now()}-${Math.random()}`; // For logging
+    const filename = asset.fileName || `upload-${tempId}`;
+    const mimeType = asset.mimeType || 'application/octet-stream';
+
+    try {
+      console.log(`[MediaService] Starting upload for ${filename}`);
+
+      // 1. Get presigned URL
+      console.log(`[MediaService] Getting presigned URL for ${filename}`);
+      const presignedInfo = await MediaService.getPresignedUploadUrl(
+        filename,
+        mimeType,
+        conversationId,
+        messageId
+      );
+      console.log(`[MediaService] Got presigned URL for mediaId: ${presignedInfo.mediaId}`);
+
+      // 2. Fetch the actual file data as a blob
+      console.log(`[MediaService] Fetching blob for ${asset.uri}`);
+      const fetchResponse = await fetch(asset.uri);
+      if (!fetchResponse.ok) {
+        throw new Error(`Failed to fetch asset data: ${fetchResponse.statusText}`);
+      }
+      const blob = await fetchResponse.blob();
+      console.log(`[MediaService] Blob fetched successfully (size: ${blob.size})`);
+
+      // 3. Upload to S3
+      console.log(`[MediaService] Uploading blob to S3: ${presignedInfo.presignedUrl}`);
+      await MediaService.uploadToS3(
+        presignedInfo.presignedUrl,
+        blob,
+        mimeType,
+        onProgress // Pass the progress callback directly
+      );
+      console.log(`[MediaService] Blob uploaded successfully to S3`);
+
+      // 4. Confirm upload with backend
+      console.log(`[MediaService] Confirming upload for mediaId: ${presignedInfo.mediaId}`);
+      const confirmationResult = await MediaService.confirmUpload(presignedInfo.mediaId);
+      console.log(`[MediaService] Upload confirmed successfully for mediaId: ${presignedInfo.mediaId}`);
+
+      return confirmationResult; // Return the confirmation result
+
+    } catch (error) {
+      console.error(`[MediaService] Upload failed for ${filename}:`, error);
+      // Re-throw the error so the calling component can handle it
+      throw error;
+    }
+  },
 };
 
 export default MediaService;

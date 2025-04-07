@@ -68,9 +68,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     position: 'relative',
+    alignItems: 'center', // Center label and indicator
   },
   activeFilterTab: {
-    // Styles for active tab container
+    // Add a subtle background or other visual cue if desired
+    // Example: backgroundColor: `${COLORS.PRIMARY}1A`, // Primary color with low opacity
+    // Example: borderRadius: 6,
   },
   filterLabel: {
     fontSize: 14,
@@ -78,17 +81,17 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_SECONDARY || '#646464',
   },
   activeFilterLabel: {
-    fontWeight: '600',
+    fontWeight: 'bold', // Make active label bold
     color: COLORS.PRIMARY || '#2B68E6',
   },
   activeIndicator: {
     position: 'absolute',
     bottom: 0,
-    left: 16,
-    right: 16,
-    height: 2,
+    left: 8, // Adjust indicator position if needed
+    right: 8, // Adjust indicator position if needed
+    height: 3, // Make indicator slightly thicker
     backgroundColor: COLORS.PRIMARY || '#2B68E6',
-    borderRadius: 1,
+    borderRadius: 1.5,
   },
 });
 

@@ -8,9 +8,12 @@ import {
   SafeAreaView,
   ActivityIndicator,
   RefreshControl,
+  Platform, // Import Platform
+  Alert, // Import Alert for feedback
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker'; // Import ImagePicker
 import { COLORS } from '../../config/constants';
 import MediaService from '../../services/mediaService'; // Import MediaService
 
@@ -19,6 +22,7 @@ import MediaGrid from './components/MediaGrid';
 import MediaFilterBar from './components/MediaFilterBar';
 import DateNavigator from './components/DateNavigator';
 import EmptyStateView from './components/EmptyStateView';
+import UploadProgressIndicator from './components/UploadProgressIndicator'; // Import progress indicator
 
 const MediaGalleryScreen = () => {
   const navigation = useNavigation(); // Use hook for navigation
@@ -39,6 +43,7 @@ const MediaGalleryScreen = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({}); // State for upload progress { tempId: percentage }
 
   // Fetch media function
   const fetchMediaData = useCallback(async (currentPage = 1, isRefreshing = false) => {
@@ -165,7 +170,71 @@ const MediaGalleryScreen = () => {
       handleCancelSelection();
     }
   };
-  
+
+  // Handle initiating the upload process
+  const handleUpload = async () => {
+    // Request permissions
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please grant access to your photo library to upload media.');
+      return;
+    }
+
+    // Launch image picker
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All, // Allow images and videos
+        allowsMultipleSelection: true, // Allow selecting multiple items
+        quality: 0.8, // Adjust quality for uploads (0 to 1)
+      });
+
+      if (!result.canceled && result.assets) {
+        // Start upload process for each selected asset
+        result.assets.forEach(asset => {
+          uploadAsset(asset);
+        });
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Could not open image picker.');
+    }
+  };
+
+  // Function to upload a single asset
+  const uploadAsset = async (asset) => {
+    const tempId = asset.assetId || `${Date.now()}-${Math.random()}`; // Generate a temporary ID
+    setUploadProgress(prev => ({ ...prev, [tempId]: 0 })); // Show progress starting at 0%
+
+    try {
+      // Use the refactored service function
+      await MediaService.uploadMedia(
+        asset,
+        (percent) => { // Progress callback
+          setUploadProgress(prev => ({ ...prev, [tempId]: percent }));
+        }
+        // Pass conversationId or messageId here if needed
+      );
+
+      // Success: Remove progress indicator and refresh
+      setUploadProgress(prev => {
+        const newState = { ...prev };
+        delete newState[tempId]; // Remove progress on completion
+        return newState;
+      });
+      Alert.alert('Success', `${asset.fileName || 'Media'} uploaded successfully!`);
+      handleRefresh(); // Refresh the gallery
+
+    } catch (error) {
+      console.error(`Failed to upload asset ${tempId}:`, error);
+      Alert.alert('Upload Failed', `Could not upload ${asset.fileName || 'media'}. Please try again.`);
+      setUploadProgress(prev => {
+        const newState = { ...prev };
+        delete newState[tempId]; // Remove progress on error
+        return newState;
+      });
+    }
+  };
+
   // Render header
   const renderHeader = () => (
     <View style={styles.header}>
@@ -178,8 +247,8 @@ const MediaGalleryScreen = () => {
             <Ionicons name="close" size={24} color={COLORS.PRIMARY} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Selected ({selectedItems.length})</Text>
-          {/* Removed checkmark button, actions are in toolbar */}
-          <View style={{ width: 40 }} /> {/* Placeholder for balance */}
+          {/* Use a view with same width as right container for balance */}
+          <View style={styles.headerRightPlaceholder} />
         </>
       ) : (
         <>
@@ -278,6 +347,17 @@ const MediaGalleryScreen = () => {
       )}
       
       {renderSelectionToolbar()}
+
+      {/* Upload FAB - only show when not in selection mode */}
+      {!isSelectionMode && (
+        <TouchableOpacity style={styles.fab} onPress={handleUpload}>
+          <Ionicons name="add" size={30} color="white" />
+        </TouchableOpacity>
+      )}
+
+      {/* Display overall upload progress */}
+      <UploadProgressIndicator progressData={uploadProgress} />
+
     </SafeAreaView>
   );
 };
@@ -295,18 +375,28 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER || '#E5E5E5',
+    backgroundColor: COLORS.BACKGROUND || '#FFFFFF', // Ensure header background
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.TEXT || '#121212',
+    textAlign: 'center', // Center title
+    flex: 1, // Allow title to take available space
   },
   backButton: {
     padding: 4,
+    minWidth: 40, // Ensure minimum touch area and balance
+    alignItems: 'flex-start', // Align icon left
   },
   headerRightContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end', // Align buttons right
+    minWidth: 80, // Match placeholder width or adjust as needed
+  },
+  headerRightPlaceholder: { // Placeholder for balance in selection mode
+    minWidth: 80, // Should match headerRightContainer width
   },
   headerButton: {
     padding: 8,
@@ -321,8 +411,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER || '#E5E5E5',
-    paddingVertical: 12,
-    backgroundColor: COLORS.BACKGROUND || '#FFFFFF',
+    paddingVertical: 10, // Slightly adjust padding
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10, // Add bottom padding for safe area on iOS
+    backgroundColor: COLORS.LIGHT || '#F7F7F7', // Slightly different background
+    // Add subtle shadow/elevation
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 3,
   },
   selectionAction: {
     alignItems: 'center',
@@ -333,6 +430,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     color: COLORS.TEXT || '#121212',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 30,
+    backgroundColor: COLORS.PRIMARY,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Add shadow/elevation
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
 

@@ -50,8 +50,11 @@ const MediaGridItem = ({
       onLongPress={onLongPress}
       activeOpacity={0.7}
     >
-      <Image source={imageSource} style={styles.image} />
-      
+      {/* Add a wrapper View for internal padding */}
+      <View style={styles.itemContent}>
+        <Image source={imageSource} style={styles.image} />
+      </View>
+
       {/* Selection checkmark */}
       {isSelectionMode && (
         <View style={[
@@ -59,13 +62,15 @@ const MediaGridItem = ({
           isSelected && styles.selectedOverlay
         ]}>
           {isSelected && (
-            <View style={styles.checkmark}>
-              <Ionicons name="checkmark" size={18} color="white" />
+            <View style={styles.checkmarkContainer}>
+              <View style={styles.checkmark}>
+                <Ionicons name="checkmark" size={18} color="white" />
+              </View>
             </View>
           )}
         </View>
       )}
-      
+
       {/* Quality indicator */}
       <MediaQualityIndicator quality={quality} />
       
@@ -86,7 +91,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: COLORS.LIGHT || '#F7F7F7', // Use a defined light color or fallback
+  },
+  itemContent: { // New style for internal padding
+    flex: 1,
+    padding: 2, // Small internal padding
   },
   selectedContainer: {
     borderWidth: 2,
@@ -104,7 +113,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedOverlay: {
-    backgroundColor: 'rgba(43, 104, 230, 0.3)',
+    backgroundColor: 'rgba(43, 104, 230, 0.4)', // Slightly darker overlay
+  },
+  checkmarkContainer: { // Wrapper for potential border/shadow
+    // Add styles here if needed, e.g., shadow
   },
   checkmark: {
     width: 28,
@@ -113,6 +125,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.PRIMARY || '#2B68E6',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5, // Add border for contrast
+    borderColor: 'rgba(255, 255, 255, 0.7)', // White border
   },
   videoOverlay: {
     ...StyleSheet.absoluteFillObject,
