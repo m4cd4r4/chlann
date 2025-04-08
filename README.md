@@ -1,4 +1,4 @@
-# 📱 ChlannClaude - High-Resolution Media Sharing Messenger
+# 📱 Chlann - High-Resolution Media Sharing Messenger
 
 <div align="center">
 
@@ -84,8 +84,8 @@ The application follows a microservices architecture for flexibility and scalabi
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/yourusername/chlannClaude.git
-   cd chlannClaude
+   git clone https://github.com/yourusername/chlann.git
+   cd chlann
    ```
 
 2. Start the development environment
@@ -129,7 +129,7 @@ For production deployment on a VPS:
 ## 📁 Project Structure
 
 ```
-chlannClaude/
+chlann/
 ├── backend/
 │   ├── api-gateway/       # API gateway service
 │   ├── auth-service/      # Authentication service

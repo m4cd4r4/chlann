@@ -1,25 +1,26 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  Alert,
   SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../config/constants';
-import AuthService from '../../services/authService';
+// TODO: Import appropriate service/action for password reset request
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  
+  const [isSuccess, setIsSuccess] = useState(false); // To show success message
+
   const validateEmail = () => {
     if (!email) {
       setEmailError('Email is required');
@@ -32,96 +33,85 @@ const ForgotPasswordScreen = ({ navigation }) => {
       return true;
     }
   };
-  
-  const handleResetPassword = async () => {
-    if (!validateEmail()) return;
-    
+
+  const handleSendResetInstructions = async () => {
+    if (!validateEmail()) {
+      return;
+    }
+
     setIsLoading(true);
-    
+    setIsSuccess(false); // Reset success state
+
     try {
-      // In a real app, this would call an API endpoint to send a password reset email
-      // For now, we'll just simulate a successful request
-      // await AuthService.requestPasswordReset(email);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setIsSubmitted(true);
-      setIsLoading(false);
+      // --- TODO: Backend Integration ---
+      // Replace this with actual API call to your backend auth service
+      // e.g., await AuthService.requestPasswordReset(email);
+      console.log(`Requesting password reset for: ${email}`);
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+      // --- End of Backend Integration Placeholder ---
+
+      setIsSuccess(true); // Show success message
+      // Optionally clear email field: setEmail('');
+      Alert.alert('Check Your Email', 'If an account exists for this email, password reset instructions have been sent.');
+
     } catch (error) {
+      console.error('Password reset request failed:', error);
+      // Show generic error, avoid confirming if email exists
+      Alert.alert('Error', 'Could not process request. Please try again.');
+    } finally {
       setIsLoading(false);
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to send password reset email. Please try again.'
-      );
     }
   };
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.header}>
+        {/* Back Button */}
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={28} color={COLORS.PRIMARY} />
+        </TouchableOpacity>
+
+        <View style={styles.contentContainer}>
           <Text style={styles.title}>Reset Password</Text>
           <Text style={styles.subtitle}>
-            Enter your email address and we'll send you instructions to reset your password.
+            Enter the email address associated with your account, and we'll send you instructions to reset your password.
           </Text>
-        </View>
-        
-        {!isSubmitted ? (
-          <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                placeholderTextColor={COLORS.MUTED}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
-                editable={!isLoading}
-              />
-              {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
-            </View>
-            
-            <TouchableOpacity
-              style={[styles.resetButton, isLoading && styles.resetButtonDisabled]}
-              onPress={handleResetPassword}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color={COLORS.WHITE} />
-              ) : (
-                <Text style={styles.resetButtonText}>Send Reset Link</Text>
-              )}
-            </TouchableOpacity>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              placeholderTextColor={COLORS.MUTED}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+              editable={!isLoading}
+            />
+            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
           </View>
-        ) : (
-          <View style={styles.successContainer}>
-            <Text style={styles.successText}>
-              If an account exists with the email {email}, you will receive password reset instructions.
-            </Text>
-            
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.navigate('Login')}
-            >
-              <Text style={styles.backButtonText}>Back to Login</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        
-        <View style={styles.footer}>
+
           <TouchableOpacity
-            style={styles.backToLoginLink}
-            onPress={() => navigation.navigate('Login')}
+            style={[styles.button, isLoading && styles.buttonDisabled]}
+            onPress={handleSendResetInstructions}
             disabled={isLoading}
           >
-            <Text style={styles.backToLoginText}>Back to Login</Text>
+            {isLoading ? (
+              <ActivityIndicator size="small" color={COLORS.WHITE} />
+            ) : (
+              <Text style={styles.buttonText}>Send Reset Instructions</Text>
+            )}
           </TouchableOpacity>
+
+          {isSuccess && (
+            <Text style={styles.successText}>
+              Password reset instructions sent! Please check your email (including spam folder).
+            </Text>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -135,27 +125,34 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20, // Adjust based on platform status bar
+    left: 15,
+    zIndex: 1, // Ensure it's above other content
+    padding: 5,
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'center',
     padding: 20,
   },
-  header: {
-    marginBottom: 30,
-  },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: COLORS.TEXT,
-    marginBottom: 10,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
-    color: COLORS.TEXT_SECONDARY,
-    lineHeight: 22,
-  },
-  formContainer: {
-    width: '100%',
+    color: COLORS.MUTED,
+    textAlign: 'center',
+    marginBottom: 30,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   label: {
     fontSize: 16,
@@ -176,56 +173,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  resetButton: {
+  button: {
     backgroundColor: COLORS.PRIMARY,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 24,
+    marginTop: 10, // Add some margin above the button
   },
-  resetButtonDisabled: {
+  buttonDisabled: {
     backgroundColor: COLORS.MUTED,
   },
-  resetButtonText: {
+  buttonText: {
     color: COLORS.WHITE,
     fontSize: 18,
     fontWeight: '600',
   },
-  successContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-  },
   successText: {
-    fontSize: 16,
-    color: COLORS.TEXT_SECONDARY,
+    marginTop: 20,
+    color: COLORS.SUCCESS, // Assuming you have a SUCCESS color
+    fontSize: 15,
     textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 24,
-  },
-  backButton: {
-    backgroundColor: COLORS.PRIMARY,
-    paddingVertical: 14,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: COLORS.WHITE,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 'auto',
-    alignItems: 'center',
-  },
-  backToLoginLink: {
-    padding: 10,
-  },
-  backToLoginText: {
-    color: COLORS.PRIMARY,
-    fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
 

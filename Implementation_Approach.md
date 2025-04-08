@@ -1,4 +1,4 @@
-# ChlannClaude Docker Setup and Troubleshooting
+# Chlann Docker Setup and Troubleshooting
 
 ## Changes Made to Fix Docker Compose Issues
 
