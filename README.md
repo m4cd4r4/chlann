@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![ChlannClaude](https://img.shields.io/badge/ChlannClaude-High--Res%20Messenger-blue?style=for-the-badge&logo=chat&logoColor=white)
+![Chlann](https://img.shields.io/badge/Chlann-High--Res%20Messenger-blue?style=for-the-badge&logo=chat&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-In%20Development-yellow?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
