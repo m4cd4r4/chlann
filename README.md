@@ -166,5 +166,5 @@ chlann/
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for high-quality media sharing</sub>
+  <sub>Built with ❤️ for high-quality media sharing.                   |m4cd4r4|</sub>
 </div>
