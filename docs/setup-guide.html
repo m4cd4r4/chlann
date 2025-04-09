@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Guide - Chlann Claude Project</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .nav {
+            margin-bottom: 30px;
+        }
+        .nav a {
+            margin-right: 15px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .nav a:hover {
+            text-decoration: underline;
+        }
+        .setup-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .note {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Chlann Claude Project - Setup Guide</h1>
+    </header>
+
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="setup-guide.html">Setup Guide</a>
+        <a href="https://github.com/m4cd4r4/chlannClaude1">GitHub Repository</a>
+    </div>
+
+    <h2>Installation and Setup</h2>
+    <p>
+        This guide will walk you through the process of setting up and running the Chlann Claude project locally.
+    </p>
+
+    <div class="setup-section">
+        <h3>Prerequisites</h3>
+        <p>Make sure you have the following installed on your system:</p>
+        <ul>
+            <li>Node.js (v14 or newer)</li>
+            <li>npm or yarn</li>
+            <li>Docker and Docker Compose (for containerized setup)</li>
+            <li>Git</li>
+        </ul>
+    </div>
+
+    <div class="setup-section">
+        <h3>Cloning the Repository</h3>
+        <pre><code>git clone https://github.com/m4cd4r4/chlannClaude1.git
+cd chlannClaude1</code></pre>
+    </div>
+
+    <div class="setup-section">
+        <h3>Backend Setup</h3>
+        <p>Navigate to the backend directory and install dependencies:</p>
+        <pre><code>cd backend
+npm install</code></pre>
+
+        <p>Create a .env file based on the example:</p>
+        <pre><code>cp .env.example .env</code></pre>
+
+        <p>Update the .env file with your configuration settings.</p>
+
+        <p>Start the backend server:</p>
+        <pre><code>npm run dev</code></pre>
+
+        <div class="note">
+            <p><strong>Note:</strong> The backend server will run on http://localhost:3000 by default.</p>
+        </div>
+    </div>
+
+    <div class="setup-section">
+        <h3>Mobile App Setup</h3>
+        <p>Navigate to the mobile directory and install dependencies:</p>
+        <pre><code>cd ../mobile
+npm install</code></pre>
+
+        <p>Start the development server:</p>
+        <pre><code>npm start</code></pre>
+
+        <div class="note">
+            <p><strong>Note:</strong> To run the app on a physical device, scan the QR code with the Expo Go app.</p>
+        </div>
+    </div>
+
+    <div class="setup-section">
+        <h3>Docker Setup (Alternative)</h3>
+        <p>For a containerized setup using Docker:</p>
+        <pre><code>docker-compose up -d</code></pre>
+
+        <p>This will start both the backend and a database container.</p>
+    </div>
+
+    <div class="note">
+        <p><strong>Troubleshooting:</strong> If you encounter any issues during setup, please check the logs or open an issue on our GitHub repository.</p>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Chlann Claude Project</p>
+    </footer>
+</body>
+</html>
